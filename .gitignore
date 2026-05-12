@@ -1,0 +1,11 @@
+node_modules/
+dist/
+.env
+.env.local
+.env.development
+.env.production
+*.log
+.env.example
+.claude/
+CLAUDE.md
+SKILL.md
