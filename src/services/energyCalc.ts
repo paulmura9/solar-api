@@ -7,7 +7,7 @@ export async function getEnergySummary(days: number): Promise<EnergySummaryDTO> 
 
   const { data, error } = await supabase
     .from('sensor_readings')
-    .select('solar_energy_today_wh, charged_energy_today_wh, solar_power')
+    .select('timestamp, solar_energy_today_wh, charged_energy_today_wh, solar_power')
     .gte('created_at', since)
     .order('created_at', { ascending: false });
 
@@ -24,25 +24,30 @@ export async function getEnergySummary(days: number): Promise<EnergySummaryDTO> 
 
   const rows = data ?? [];
 
-  const maxGenerated = rows.reduce((max, r) => {
-    const v = r.solar_energy_today_wh as number | null;
-    return v !== null && v > max ? v : max;
-  }, 0);
+  // solar_energy_today_wh resets daily. Sum the daily maximum per
+  // calendar day to get the correct total over a multi-day period.
+  const generatedByDay = new Map<string, number>();
+  const deliveredByDay = new Map<string, number>();
 
-  const maxDelivered = rows.reduce((max, r) => {
-    const v = r.charged_energy_today_wh as number | null;
-    return v !== null && v > max ? v : max;
-  }, 0);
+  for (const row of rows) {
+    const day = new Date(row.timestamp as string).toISOString().split('T')[0];
+    const genVal = (row.solar_energy_today_wh as number | null) ?? 0;
+    const delVal = (row.charged_energy_today_wh as number | null) ?? 0;
+    if (genVal > (generatedByDay.get(day) ?? 0)) generatedByDay.set(day, genVal);
+    if (delVal > (deliveredByDay.get(day) ?? 0)) deliveredByDay.set(day, delVal);
+  }
 
+  const totalGeneratedWh = Array.from(generatedByDay.values()).reduce((sum, v) => sum + v, 0);
+  const totalDeliveredWh = Array.from(deliveredByDay.values()).reduce((sum, v) => sum + v, 0);
   const currentPowerW = rows.length > 0 ? ((rows[0].solar_power as number | null) ?? null) : null;
 
   const efficiency =
-    maxGenerated > 0 ? parseFloat(((maxDelivered / maxGenerated) * 100).toFixed(1)) : 0;
+    totalGeneratedWh > 0 ? parseFloat(((totalDeliveredWh / totalGeneratedWh) * 100).toFixed(1)) : 0;
 
   return {
     periodDays: days,
-    totalGeneratedWh: parseFloat(maxGenerated.toFixed(2)),
-    totalDeliveredWh: parseFloat(maxDelivered.toFixed(2)),
+    totalGeneratedWh: parseFloat(totalGeneratedWh.toFixed(2)),
+    totalDeliveredWh: parseFloat(totalDeliveredWh.toFixed(2)),
     efficiencyPercent: efficiency,
     currentPowerW,
   };

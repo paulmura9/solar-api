@@ -18,8 +18,10 @@ function rowToDTO(row: Record<string, unknown>): DeviceCommandDTO {
 }
 
 /**
- * Creates a command and inserts it with status PENDING. The Pi gateway picks it up
- * via Supabase Realtime, publishes to MQTT, and updates the status asynchronously.
+ * Inserts a command with status PENDING into device_commands.
+ * The Pi gateway picks it up via Supabase Realtime, publishes
+ * the command to ESP32 via local MQTT, and updates the status
+ * to SENT then ACKNOWLEDGED asynchronously.
  */
 export async function createCommand(
   commandType: CommandType,
@@ -96,5 +98,21 @@ export async function timeoutStaleCommands(): Promise<void> {
       severity: 'WARNING',
       message: `Command ${commandId} (${commandType}) timed out after ${env.COMMAND_TIMEOUT_SECONDS}s`,
     });
+  }
+
+  const pendingCutoffMs = env.COMMAND_TIMEOUT_SECONDS * 5 * 1000;
+  const pendingCutoff = new Date(Date.now() - pendingCutoffMs).toISOString();
+
+  const { error: pendingError } = await supabase
+    .from('device_commands')
+    .update({
+      status: 'FAILED',
+      error_message: 'Command never picked up by gateway (Pi offline or disconnected)',
+    })
+    .eq('status', 'PENDING')
+    .lt('created_at', pendingCutoff);
+
+  if (pendingError) {
+    logger.error('commandService', 'Failed to timeout PENDING commands', { error: pendingError.message });
   }
 }

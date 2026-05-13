@@ -1,30 +1,44 @@
-type LogLevel = 'info' | 'warn' | 'error' | 'debug';
+function writeLog(
+  level: 'info' | 'warn' | 'error' | 'debug',
+  context: string,
+  message: string,
+  extra?: Record<string, unknown>,
+): void {
+  const entry: Record<string, unknown> = { level, ts: new Date().toISOString(), context, message, ...extra };
+  const line = JSON.stringify(entry) + '\n';
+  if (level === 'error') {
+    process.stderr.write(line);
+  } else {
+    process.stdout.write(line);
+  }
+}
 
-function formatMessage(level: LogLevel, context: string, message: string): string {
-  return `[${new Date().toISOString()}] [${level.toUpperCase()}] [${context}] ${message}`;
+function serializeErr(err: unknown): Record<string, unknown> {
+  if (err === undefined || err === null) return {};
+  if (err instanceof Error) return { err: err.message };
+  if (typeof err === 'string') return { err };
+  if (typeof err === 'object') {
+    const obj = err as Record<string, unknown>;
+    // Avoid overwriting the log entry's own 'message' key (e.g. Supabase errors carry message)
+    if ('message' in obj) return { err: JSON.stringify(err) };
+    return obj;
+  }
+  return { err: String(err) };
 }
 
 export const logger = {
   info(context: string, message: string): void {
-    console.log(formatMessage('info', context, message));
+    writeLog('info', context, message);
   },
   warn(context: string, message: string): void {
-    console.warn(formatMessage('warn', context, message));
+    writeLog('warn', context, message);
   },
   error(context: string, message: string, err?: unknown): void {
-    let errMsg = '';
-    if (err instanceof Error) {
-      errMsg = err.message;
-    } else if (err !== null && err !== undefined && typeof err === 'object') {
-      errMsg = JSON.stringify(err);
-    } else if (err !== null && err !== undefined) {
-      errMsg = String(err);
-    }
-    console.error(formatMessage('error', context, message), errMsg ? `| ${errMsg}` : '');
+    writeLog('error', context, message, serializeErr(err));
   },
   debug(context: string, message: string): void {
     if (process.env['NODE_ENV'] !== 'production') {
-      console.debug(formatMessage('debug', context, message));
+      writeLog('debug', context, message);
     }
   },
 };

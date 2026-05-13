@@ -10,6 +10,14 @@ export function getSupabaseClient(): SupabaseClient {
         autoRefreshToken: false,
         persistSession: false,
       },
+      realtime: {
+        params: {
+          eventsPerSecond: 0,
+        },
+      },
+      global: {
+        headers: { 'X-Client-Info': 'lighttrack-api' },
+      },
     });
   }
   return _supabase;

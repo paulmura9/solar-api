@@ -20,7 +20,12 @@ import dashboardRouter from './routes/dashboard';
 const app = express();
 
 app.use(helmet());
-app.use(cors({ origin: corsOrigins, credentials: true }));
+app.use(cors({
+  origin: corsOrigins,
+  credentials: true,
+  methods: ['GET', 'POST'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+}));
 app.use(requestLogger);
 app.use(express.json({ limit: '1mb' }));
 

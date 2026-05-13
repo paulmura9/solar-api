@@ -6,23 +6,40 @@ export async function getDashboardSummary(_req: Request, res: Response): Promise
   const [readingResult, visionResult, devicesResult, eventsResult] = await Promise.allSettled([
     supabase
       .from('sensor_readings')
-      .select('*')
+      .select(`
+        id, timestamp, horizontal_angle, vertical_angle,
+        tracking_mode, is_moving,
+        ldr_top_left, ldr_top_right, ldr_bottom_left, ldr_bottom_right,
+        horizontal_light_difference, vertical_light_difference,
+        battery_voltage, battery_percent, battery_status,
+        solar_voltage, solar_current, solar_power, solar_energy_today_wh,
+        charging_voltage, charging_current, charging_power, charged_energy_today_wh,
+        ambient_light_lux, created_at
+      `)
       .order('timestamp', { ascending: false })
       .limit(1)
       .maybeSingle(),
     supabase
       .from('vision_results')
-      .select('*')
+      .select(`
+        id, timestamp, dirt_level_percent, cleanliness_percent,
+        cleaning_required, confidence, image_path, processed_image_path, created_at
+      `)
       .order('timestamp', { ascending: false })
       .limit(1)
       .maybeSingle(),
     supabase
       .from('device_status')
-      .select('*')
+      .select(`
+        id, device_name, is_online, last_seen,
+        firmware_version, status_message, updated_at
+      `)
       .order('device_name', { ascending: true }),
     supabase
       .from('system_events')
-      .select('*')
+      .select(`
+        id, timestamp, event_type, severity, message, created_at
+      `)
       .order('timestamp', { ascending: false })
       .limit(5),
   ]);
