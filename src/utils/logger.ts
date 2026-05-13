@@ -20,7 +20,13 @@ function serializeErr(err: unknown): Record<string, unknown> {
   if (typeof err === 'object') {
     const obj = err as Record<string, unknown>;
     // Avoid overwriting the log entry's own 'message' key (e.g. Supabase errors carry message)
-    if ('message' in obj) return { err: JSON.stringify(err) };
+    if ('message' in obj) {
+      try {
+        return { err: JSON.stringify(err) };
+      } catch {
+        return { err: String(obj['message'] ?? ''), errName: String(obj['name'] ?? '') };
+      }
+    }
     return obj;
   }
   return { err: String(err) };

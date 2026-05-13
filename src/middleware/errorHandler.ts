@@ -2,12 +2,16 @@ import { Request, Response, NextFunction } from 'express';
 import { ZodError } from 'zod';
 import { HttpError } from '../utils/httpError';
 import { logger } from '../utils/logger';
+import { env } from '../config/env';
 
-export function errorHandler(err: unknown, _req: Request, res: Response, _next: NextFunction): void {
+export function errorHandler(err: unknown, req: Request, res: Response, _next: NextFunction): void {
   if (err instanceof HttpError) {
+    if (err.details !== undefined) {
+      logger.error('errorHandler', `HttpError ${err.statusCode}: ${err.message}`, err.details);
+    }
     res.status(err.statusCode).json({
       error: err.message,
-      ...(err.details !== undefined ? { details: err.details } : {}),
+      ...(err.details !== undefined && env.NODE_ENV !== 'production' ? { details: err.details } : {}),
     });
     return;
   }
@@ -29,5 +33,6 @@ export function errorHandler(err: unknown, _req: Request, res: Response, _next: 
 
   res.status(500).json({
     error: 'Internal server error',
+    requestId: req.requestId,
   });
 }
