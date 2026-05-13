@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { getAllDevices, getDeviceByName } from '../services/deviceService';
 import { HttpError } from '../utils/httpError';
+import { DEVICE_NAMES } from '../utils/constants';
 import type { DeviceStatusDTO, DeviceName } from '../types/device';
 
 function toResponse(dto: DeviceStatusDTO): object {
@@ -21,7 +22,11 @@ export async function getDevices(_req: Request, res: Response): Promise<void> {
 }
 
 export async function getDeviceLastSeen(req: Request, res: Response): Promise<void> {
-  const deviceName = req.params['device_name'] as DeviceName;
+  const rawDeviceName = req.params['device_name'];
+  if (!(DEVICE_NAMES as readonly string[]).includes(rawDeviceName)) {
+    throw new HttpError(400, `Invalid device name. Valid values: ${DEVICE_NAMES.join(', ')}`);
+  }
+  const deviceName = rawDeviceName as DeviceName;
   const device = await getDeviceByName(deviceName);
 
   if (!device) {

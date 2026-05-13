@@ -130,7 +130,7 @@ export async function getReadingStats(req: Request, res: Response): Promise<void
   const { data, error } = await supabase
     .from('sensor_readings')
     .select('solar_power, battery_voltage')
-    .gte('created_at', since);
+    .gte('timestamp', since);
 
   if (error) {
     logger.error('readings.controller', 'Failed to fetch reading stats', error instanceof Error ? error.message : JSON.stringify(error));

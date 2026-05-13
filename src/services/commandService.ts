@@ -103,16 +103,19 @@ export async function timeoutStaleCommands(): Promise<void> {
   const pendingCutoffMs = env.COMMAND_TIMEOUT_SECONDS * 5 * 1000;
   const pendingCutoff = new Date(Date.now() - pendingCutoffMs).toISOString();
 
-  const { error: pendingError } = await supabase
+  const { data: timedOutPending, error: pendingError } = await supabase
     .from('device_commands')
     .update({
       status: 'FAILED',
       error_message: 'Command never picked up by gateway (Pi offline or disconnected)',
     })
     .eq('status', 'PENDING')
-    .lt('created_at', pendingCutoff);
+    .lt('created_at', pendingCutoff)
+    .select('id');
 
   if (pendingError) {
     logger.error('commandService', 'Failed to timeout PENDING commands', { error: pendingError.message });
+  } else if (timedOutPending && timedOutPending.length > 0) {
+    logger.info('commandService', `Timed out ${timedOutPending.length} PENDING command(s) older than ${env.COMMAND_TIMEOUT_SECONDS * 5}s`);
   }
 }

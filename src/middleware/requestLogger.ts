@@ -6,7 +6,7 @@ export function requestLogger(req: Request, res: Response, next: NextFunction): 
   const start = Date.now();
 
   res.on('finish', () => {
-    console.log(JSON.stringify({
+    process.stdout.write(JSON.stringify({
       timestamp: new Date().toISOString(),
       requestId: req.requestId,
       method: req.method,
@@ -15,7 +15,7 @@ export function requestLogger(req: Request, res: Response, next: NextFunction): 
       duration_ms: Date.now() - start,
       ip: req.ip ?? null,
       userId: req.user?.id ?? null,
-    }));
+    }) + '\n');
   });
 
   next();

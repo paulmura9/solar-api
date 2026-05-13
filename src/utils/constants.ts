@@ -58,9 +58,6 @@ export const VISION_DEFAULT_LIMIT = 50;
 export const ENERGY_DEFAULT_DAYS = 7;
 export const ENERGY_MAX_DAYS = 30;
 
-export const SIGNED_URL_EXPIRES_IN = 3600;
-export const ALLOWED_IMAGE_CONTENT_TYPES = ['image/jpeg', 'image/png'] as const;
-
 export const OPEN_METEO_BASE_URL = 'https://api.open-meteo.com/v1/forecast';
 export const OPEN_METEO_TIMEZONE = 'Europe/Bucharest';
 export const OPEN_METEO_FORECAST_DAYS = 7;

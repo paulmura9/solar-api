@@ -8,8 +8,8 @@ export async function getEnergySummary(days: number): Promise<EnergySummaryDTO> 
   const { data, error } = await supabase
     .from('sensor_readings')
     .select('timestamp, solar_energy_today_wh, charged_energy_today_wh, solar_power')
-    .gte('created_at', since)
-    .order('created_at', { ascending: false });
+    .gte('timestamp', since)
+    .order('timestamp', { ascending: false });
 
   if (error) {
     logger.error('energyCalc', 'Failed to fetch sensor_readings for energy summary', error);
