@@ -1,3 +1,4 @@
+import crypto from 'node:crypto';
 import express, { Request, Response } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -42,6 +43,13 @@ const apiLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'Too many requests, please try again later' },
+  keyGenerator: (req: Request): string => {
+    const auth = req.headers['authorization'];
+    if (typeof auth === 'string' && auth.startsWith('Bearer ')) {
+      return crypto.createHash('sha256').update(auth.slice(7)).digest('hex').slice(0, 16);
+    }
+    return req.ip ?? 'anonymous';
+  },
 });
 
 app.use('/api/', apiLimiter);

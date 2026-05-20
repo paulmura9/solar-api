@@ -24,8 +24,8 @@ const envSchema = z.object({
   DEVICE_OFFLINE_AFTER_SECONDS: z.coerce.number().int().positive().default(90),
   DEVICE_OFFLINE_CHECK_INTERVAL_SECONDS: z.coerce.number().int().positive().default(30),
 
-  FRONTEND_RATE_LIMIT_WINDOW_MINUTES: z.coerce.number().int().positive().default(15),
-  FRONTEND_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(100),
+  FRONTEND_RATE_LIMIT_WINDOW_MINUTES: z.coerce.number().int().positive().default(1),
+  FRONTEND_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(300),
 
   DEVICE_API_KEY: z
     .string()
