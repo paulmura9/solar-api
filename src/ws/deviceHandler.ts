@@ -104,8 +104,7 @@ export function registerDeviceConnection(ws: WebSocket, deviceId: string): void 
   });
 
   ws.on('error', (err) => {
-    logger.warn('ws.deviceHandler', `Device socket error: ${deviceId}`);
-    logger.error('ws.deviceHandler', 'detail', err);
+    logger.error('ws.deviceHandler', `Device socket error: ${deviceId}`, err);
   });
 }
 
@@ -135,8 +134,7 @@ function setupProtocolPing(conn: DeviceConnection): void {
     try {
       conn.ws.ping();
     } catch (err) {
-      logger.warn('ws.deviceHandler', `Ping send failed for ${conn.deviceId}`);
-      logger.error('ws.deviceHandler', 'ping detail', err);
+      logger.error('ws.deviceHandler', `Ping send failed for ${conn.deviceId}`, err);
       clearInterval(pingInterval);
     }
   }, env.PROTOCOL_PING_INTERVAL_MS);
@@ -340,8 +338,7 @@ async function handleHeartbeat(conn: DeviceConnection, payload: unknown): Promis
     try {
       conn.ws.send(JSON.stringify(ack));
     } catch (err) {
-      logger.warn('ws.deviceHandler', `Failed to send heartbeat_ack to ${conn.deviceId}`);
-      logger.error('ws.deviceHandler', 'detail', err);
+      logger.error('ws.deviceHandler', `Failed to send heartbeat_ack to ${conn.deviceId}`, err);
     }
   }
 }
@@ -392,42 +389,6 @@ async function handleSyncRequest(conn: DeviceConnection, payload: unknown): Prom
       logger.error('ws.deviceHandler', `Resync send failed for command ${cmd.id}`, err);
       break;
     }
-  }
-}
-
-export function sendCommandToDevice(
-  deviceId: string,
-  commandId: string,
-  commandType: string,
-  args: Record<string, unknown>,
-  createdAtIso: string
-): boolean {
-  const conn = deviceRegistry.get(deviceId);
-  if (!conn) return false;
-  if (conn.ws.readyState !== WebSocket.OPEN) return false;
-
-  const candidate = {
-    v: 1 as const,
-    type: 'command' as const,
-    id: commandId,
-    timestamp: createdAtIso,
-    payload: {
-      command_type: commandType,
-      args,
-    },
-  };
-  const validated = outgoingCommandSchema.safeParse(candidate);
-  if (!validated.success) {
-    logger.error('ws.deviceHandler', `Refusing to send malformed command ${commandId}`, validated.error.issues);
-    return false;
-  }
-
-  try {
-    conn.ws.send(JSON.stringify(validated.data));
-    return true;
-  } catch (err) {
-    logger.error('ws.deviceHandler', `send to device ${deviceId} failed`, err);
-    return false;
   }
 }
 

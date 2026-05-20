@@ -110,7 +110,7 @@ export async function timeoutStaleCommands(): Promise<void> {
     .select('id');
 
   if (pendingError) {
-    logger.error('commandService', 'Failed to timeout PENDING commands', { error: pendingError.message });
+    logger.error('commandService', 'Failed to timeout PENDING commands', pendingError);
   } else if (timedOutPending && timedOutPending.length > 0) {
     logger.info('commandService', `Timed out ${timedOutPending.length} PENDING command(s) older than ${env.COMMAND_TIMEOUT_SECONDS * 5}s`);
   }

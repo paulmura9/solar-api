@@ -44,5 +44,3 @@ export const commandQuerySchema = z.object({
     { message: `Each status must be one of: ${COMMAND_STATUSES.join(', ')}` }
   ),
 });
-
-export type CreateCommandInput = z.infer<typeof createCommandSchema>;

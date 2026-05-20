@@ -19,8 +19,6 @@ const envSchema = z.object({
   LOCATION_LAT: z.coerce.number().min(-90).max(90),
   LOCATION_LON: z.coerce.number().min(-180).max(180),
 
-  SUPABASE_STORAGE_BUCKET: z.string().default('panel-images'),
-
   COMMAND_TIMEOUT_SECONDS: z.coerce.number().int().positive().default(10),
   COMMAND_TIMEOUT_CHECK_INTERVAL_SECONDS: z.coerce.number().int().positive().default(30),
   DEVICE_OFFLINE_AFTER_SECONDS: z.coerce.number().int().positive().default(90),
@@ -36,7 +34,6 @@ const envSchema = z.object({
     .string()
     .regex(DEVICE_ID_PATTERN, 'EXPECTED_DEVICE_ID must match /^[a-z0-9-]{3,64}$/'),
 
-  WS_HEARTBEAT_INTERVAL_MS: z.coerce.number().int().positive().default(30_000),
   WS_HEARTBEAT_TIMEOUT_MS: z.coerce.number().int().positive().default(60_000),
   PROTOCOL_PING_INTERVAL_MS: z.coerce.number().int().positive().default(20_000),
   PROTOCOL_PING_TIMEOUT_MS: z.coerce.number().int().positive().default(10_000),

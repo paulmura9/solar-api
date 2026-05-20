@@ -50,16 +50,8 @@ class DeviceConnectionRegistry {
     }
   }
 
-  get(deviceId: string): DeviceConnection | undefined {
-    return this.connections.get(deviceId);
-  }
-
   values(): IterableIterator<DeviceConnection> {
     return this.connections.values();
-  }
-
-  entries(): IterableIterator<[string, DeviceConnection]> {
-    return this.connections.entries();
   }
 
   size(): number {

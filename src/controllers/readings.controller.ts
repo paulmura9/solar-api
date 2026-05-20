@@ -80,7 +80,7 @@ export async function getLatestReading(_req: Request, res: Response): Promise<vo
     .maybeSingle();
 
   if (error) {
-    logger.error('readings.controller', 'Failed to fetch latest reading', error instanceof Error ? error.message : JSON.stringify(error));
+    logger.error('readings.controller', 'Failed to fetch latest reading', error);
     throw new HttpError(500, 'Failed to fetch latest reading');
   }
 
@@ -110,7 +110,7 @@ export async function getReadingHistory(req: Request, res: Response): Promise<vo
   const { data, error, count } = await query;
 
   if (error) {
-    logger.error('readings.controller', 'Failed to fetch reading history', error instanceof Error ? error.message : JSON.stringify(error));
+    logger.error('readings.controller', 'Failed to fetch reading history', error);
     throw new HttpError(500, 'Failed to fetch reading history');
   }
 
@@ -133,7 +133,7 @@ export async function getReadingStats(req: Request, res: Response): Promise<void
     .gte('timestamp', since);
 
   if (error) {
-    logger.error('readings.controller', 'Failed to fetch reading stats', error instanceof Error ? error.message : JSON.stringify(error));
+    logger.error('readings.controller', 'Failed to fetch reading stats', error);
     throw new HttpError(500, 'Failed to fetch reading stats');
   }
 

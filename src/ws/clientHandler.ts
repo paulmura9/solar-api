@@ -77,8 +77,7 @@ export function registerClientConnection({ ws, userId, userEmail }: RegisterClie
   });
 
   ws.on('error', (err) => {
-    logger.warn('ws.clientHandler', `Client socket error for user=${userId}`);
-    logger.error('ws.clientHandler', 'detail', err);
+    logger.error('ws.clientHandler', `Client socket error for user=${userId}`, err);
   });
 }
 

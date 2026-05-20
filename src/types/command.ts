@@ -13,8 +13,3 @@ export interface DeviceCommandDTO {
   sentAt: string | null;
   acknowledgedAt: string | null;
 }
-
-export interface CreateCommandInput {
-  command_type: CommandType;
-  payload: Record<string, unknown>;
-}

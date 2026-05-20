@@ -82,8 +82,6 @@ export const commandAckPayloadSchema = z
   })
   .strict();
 
-export type CommandAckPayload = z.infer<typeof commandAckPayloadSchema>;
-
 export const esp32EventPayloadSchema = z
   .object({
     event_type: z.string().min(1).max(64),
@@ -91,8 +89,6 @@ export const esp32EventPayloadSchema = z
     message: z.string().min(1).max(1000),
   })
   .strict();
-
-export type Esp32EventPayload = z.infer<typeof esp32EventPayloadSchema>;
 
 export const visionResultPayloadSchema = z
   .object({
@@ -118,21 +114,10 @@ export const heartbeatPayloadSchema = z
   })
   .strict();
 
-export type HeartbeatPayload = z.infer<typeof heartbeatPayloadSchema>;
-
 export const syncRequestPayloadSchema = z
   .object({
     last_command_id: UUID.nullable(),
     esp32_alive: z.boolean(),
-  })
-  .strict();
-
-export type SyncRequestPayload = z.infer<typeof syncRequestPayloadSchema>;
-
-export const outgoingCommandPayloadSchema = z
-  .object({
-    command_type: z.enum(COMMAND_TYPES),
-    args: z.record(z.unknown()),
   })
   .strict();
 
@@ -142,7 +127,12 @@ export const outgoingCommandSchema = z
     type: z.literal('command'),
     id: UUID,
     timestamp: ISO8601,
-    payload: outgoingCommandPayloadSchema,
+    payload: z
+      .object({
+        command_type: z.enum(COMMAND_TYPES),
+        args: z.record(z.unknown()),
+      })
+      .strict(),
   })
   .strict();
 
@@ -154,10 +144,7 @@ export const clientReauthPayloadSchema = z
   })
   .strict();
 
-export type ClientReauthPayload = z.infer<typeof clientReauthPayloadSchema>;
-
-export const CLIENT_MESSAGE_TYPES = ['reauth'] as const;
-export type ClientMessageType = (typeof CLIENT_MESSAGE_TYPES)[number];
+const CLIENT_MESSAGE_TYPES = ['reauth'] as const;
 
 export const clientIncomingEnvelopeSchema = z
   .object({

@@ -20,8 +20,7 @@ function emit(type: ServerOutboundType, payload: object): void {
     try {
       conn.ws.send(serialized);
     } catch (err) {
-      logger.warn('ws.broadcaster', `Failed to send to client ${conn.userId}`);
-      logger.error('ws.broadcaster', 'send error detail', err);
+      logger.error('ws.broadcaster', `Failed to send to client ${conn.userId}`, err);
     }
   }
 }
