@@ -46,7 +46,7 @@ export async function getLatestVision(_req: Request, res: Response): Promise<voi
   }
 
   res.json({
-    data: data ? rowToResponse(data as Record<string, unknown>) : null,
+    data: data ? rowToResponse(data) : null,
     timestamp: new Date().toISOString(),
   });
 }

@@ -1,11 +1,4 @@
-import type { TRACKING_MODES, BATTERY_STATUSES } from '../utils/constants';
-
-export type TrackingMode = (typeof TRACKING_MODES)[number];
-export type BatteryStatus = (typeof BATTERY_STATUSES)[number];
-
-export interface ReadingHistoryQuery {
-  limit: number;
-  offset: number;
-  start_date?: string;
-  end_date?: string;
-}
+// types/reading.ts is reserved for future DTOs derived from sensor_readings.
+// Current read-paths return inline-typed objects from controllers; DTO extraction
+// will land when the dashboard moves to camelCase responses.
+export {};

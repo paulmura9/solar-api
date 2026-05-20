@@ -11,13 +11,3 @@ export interface DeviceStatusDTO {
   statusMessage: string | null;
   updatedAt: string;
 }
-
-export interface DeviceStatusRow {
-  id: number;
-  device_name: string;
-  is_online: boolean;
-  last_seen: string | null;
-  firmware_version: string | null;
-  status_message: string | null;
-  updated_at: string;
-}

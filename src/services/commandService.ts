@@ -19,27 +19,25 @@ function rowToDTO(row: Record<string, unknown>): DeviceCommandDTO {
   };
 }
 
-/**
- * Inserts a command with status PENDING into device_commands.
- * The Pi gateway picks it up via Supabase Realtime, publishes
- * the command to ESP32 via local MQTT, and updates the status
- * to SENT then ACKNOWLEDGED asynchronously.
- */
+// Inserts a command with status PENDING into device_commands. The WS device
+// handler picks it up (immediately if Pi is connected, on resync otherwise),
+// publishes to ESP32 via local MQTT on the Pi, and acks back over the same
+// WebSocket to drive status -> SENT -> ACKNOWLEDGED.
 export async function createCommand(
   commandType: CommandType,
   payload: Record<string, unknown>
 ): Promise<DeviceCommandDTO> {
-  const { data: inserted, error: insertError } = await supabase
+  const response = await supabase
     .from('device_commands')
     .insert({ command_type: commandType, payload, status: 'PENDING' })
     .select()
     .single();
 
-  if (insertError || !inserted) {
-    throw new Error(`Failed to insert command: ${insertError?.message ?? 'no data returned'}`);
+  if (response.error || !response.data) {
+    throw new Error(`Failed to insert command: ${response.error?.message ?? 'no data returned'}`);
   }
 
-  return rowToDTO(inserted as Record<string, unknown>);
+  return rowToDTO(response.data as Record<string, unknown>);
 }
 
 export async function getRecentCommands(limit: number, statusFilter?: string): Promise<DeviceCommandDTO[]> {
@@ -122,13 +120,9 @@ export async function timeoutStaleCommands(): Promise<void> {
   }
 }
 
-// ===== v2 (WebSocket-direct delivery) helpers =====
-//
-// These supplement the existing Realtime-era flow: they let the WS device
-// handler mark commands SENT after pushing to the Pi, ACKNOWLEDGED/FAILED on
-// receiving a command_ack envelope, and re-deliver pending commands on Pi
-// reconnect. The existing functions above remain intact for backwards
-// compatibility during the phased migration.
+// WebSocket delivery helpers: the device handler marks commands SENT after
+// pushing to the Pi, ACKNOWLEDGED/FAILED on the command_ack envelope, and
+// re-delivers pending commands on Pi reconnect via findCommandsForResync.
 
 export async function markCommandSent(commandId: string): Promise<void> {
   const { error } = await supabase
@@ -175,7 +169,7 @@ export async function acknowledgeCommand(
     return null;
   }
 
-  return rowToDTO(data as Record<string, unknown>);
+  return rowToDTO(data);
 }
 
 // Sync support: when the Pi reconnects, it sends sync_request with its last

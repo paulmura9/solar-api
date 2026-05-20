@@ -56,8 +56,8 @@ export async function getDashboardSummary(_req: Request, res: Response): Promise
     return result.value.data ?? null;
   }
 
-  const latestReading = extractData(readingResult as PromiseSettledResult<{ data: unknown | null; error: unknown }>, 'latest reading');
-  const latestVision = extractData(visionResult as PromiseSettledResult<{ data: unknown | null; error: unknown }>, 'latest vision');
+  const latestReading = extractData(readingResult as PromiseSettledResult<{ data: unknown; error: unknown }>, 'latest reading');
+  const latestVision = extractData(visionResult as PromiseSettledResult<{ data: unknown; error: unknown }>, 'latest vision');
   const devicesRaw = extractData(devicesResult as PromiseSettledResult<{ data: unknown[] | null; error: unknown }>, 'device status');
   const eventsRaw = extractData(eventsResult as PromiseSettledResult<{ data: unknown[] | null; error: unknown }>, 'recent events');
 

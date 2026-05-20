@@ -1,5 +1,4 @@
-import crypto from 'node:crypto';
-import { randomUUID } from 'node:crypto';
+import crypto, { randomUUID } from 'node:crypto';
 import type { IncomingMessage } from 'node:http';
 import { WebSocket, WebSocketServer } from 'ws';
 
@@ -223,28 +222,51 @@ async function handleDeviceMessage(
   }
 }
 
+const DEVICE_MESSAGE_TYPES = [
+  'telemetry',
+  'command_ack',
+  'esp32_event',
+  'vision_result',
+  'heartbeat',
+  'sync_request',
+] as const;
+type DeviceMessageType = (typeof DEVICE_MESSAGE_TYPES)[number];
+
+function isDeviceMessageType(value: string): value is DeviceMessageType {
+  return (DEVICE_MESSAGE_TYPES as readonly string[]).includes(value);
+}
+
 async function dispatchEnvelope(conn: DeviceConnection, envelope: WsEnvelope): Promise<void> {
+  if (!isDeviceMessageType(envelope.type)) {
+    logger.warn('ws.deviceHandler', `Unknown message type "${envelope.type}" from ${conn.deviceId}`);
+    return;
+  }
+
+  // Narrowed to DeviceMessageType — adding a new value to DEVICE_MESSAGE_TYPES
+  // without a case here triggers the assertNever below at compile time.
   switch (envelope.type) {
     case 'telemetry':
       await handleTelemetry(envelope.payload);
-      break;
+      return;
     case 'command_ack':
       await handleCommandAck(envelope.payload);
-      break;
+      return;
     case 'esp32_event':
       await handleEsp32Event(envelope.payload);
-      break;
+      return;
     case 'vision_result':
       await handleVisionResult(envelope.payload);
-      break;
+      return;
     case 'heartbeat':
       await handleHeartbeat(conn, envelope.payload);
-      break;
+      return;
     case 'sync_request':
       await handleSyncRequest(conn, envelope.payload);
-      break;
-    default:
-      logger.warn('ws.deviceHandler', `Unknown message type "${envelope.type}" from ${conn.deviceId}`);
+      return;
+    default: {
+      const _exhaustive: never = envelope.type;
+      void _exhaustive;
+    }
   }
 }
 
@@ -348,8 +370,15 @@ async function handleHeartbeat(conn: DeviceConnection, payload: unknown): Promis
   // Heartbeat ack is a lightweight liveness signal back to the Pi so it can
   // tell our side is processing messages (vs. just holding the socket).
   if (conn.ws.readyState === WebSocket.OPEN) {
+    const ack = {
+      v: 1 as const,
+      type: 'heartbeat_ack' as const,
+      id: randomUUID(),
+      timestamp: new Date().toISOString(),
+      payload: {},
+    };
     try {
-      conn.ws.send(JSON.stringify({ v: 1, type: 'heartbeat_ack', timestamp: new Date().toISOString() }));
+      conn.ws.send(JSON.stringify(ack));
     } catch (err) {
       logger.warn('ws.deviceHandler', `Failed to send heartbeat_ack to ${conn.deviceId}`);
       logger.error('ws.deviceHandler', 'detail', err);
@@ -384,9 +413,11 @@ async function handleSyncRequest(conn: DeviceConnection, payload: unknown): Prom
       v: 1,
       type: 'command',
       id: cmd.id,
-      command_type: cmd.commandType,
-      payload: cmd.payload,
       timestamp: cmd.createdAt,
+      payload: {
+        command_type: cmd.commandType,
+        args: cmd.payload,
+      },
     };
     // Validate before sending — guards against a corrupt row that would crash
     // the Pi's parser. A bad row gets skipped, not retried.
@@ -405,13 +436,13 @@ async function handleSyncRequest(conn: DeviceConnection, payload: unknown): Prom
   }
 }
 
-// ===== Outgoing command (used in Phase 2 by the REST POST /api/commands path) =====
+// ===== Outgoing command (used by the REST POST /api/commands path) =====
 
 export function sendCommandToDevice(
   deviceId: string,
   commandId: string,
   commandType: string,
-  payload: Record<string, unknown>,
+  args: Record<string, unknown>,
   createdAtIso: string
 ): boolean {
   const conn = deviceRegistry.get(deviceId);
@@ -422,9 +453,11 @@ export function sendCommandToDevice(
     v: 1 as const,
     type: 'command' as const,
     id: commandId,
-    command_type: commandType,
-    payload,
     timestamp: createdAtIso,
+    payload: {
+      command_type: commandType,
+      args,
+    },
   };
   const validated = outgoingCommandSchema.safeParse(candidate);
   if (!validated.success) {
@@ -448,7 +481,3 @@ function bufferToString(raw: Buffer | ArrayBuffer | Buffer[]): string {
   if (Array.isArray(raw)) return Buffer.concat(raw).toString('utf8');
   return Buffer.from(raw).toString('utf8');
 }
-
-// Re-export so server.ts has a single import point for envelope id generation
-// in tests / outgoing message construction.
-export const newMessageId = (): string => randomUUID();

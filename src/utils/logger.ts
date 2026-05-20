@@ -13,23 +13,36 @@ function writeLog(
   }
 }
 
+function stringifyField(value: unknown): string {
+  if (value === undefined || value === null) return '';
+  if (typeof value === 'string') return value;
+  if (typeof value === 'number' || typeof value === 'boolean' || typeof value === 'bigint') {
+    return String(value);
+  }
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return '[unserializable]';
+  }
+}
+
 function serializeErr(err: unknown): Record<string, unknown> {
   if (err === undefined || err === null) return {};
   if (err instanceof Error) return { err: err.message };
   if (typeof err === 'string') return { err };
   if (typeof err === 'object') {
     const obj = err as Record<string, unknown>;
-    // Avoid overwriting the log entry's own 'message' key (e.g. Supabase errors carry message)
+    // Avoid overwriting the log entry's own 'message' key (e.g. Supabase errors carry message).
     if ('message' in obj) {
       try {
         return { err: JSON.stringify(err) };
       } catch {
-        return { err: String(obj['message'] ?? ''), errName: String(obj['name'] ?? '') };
+        return { err: stringifyField(obj['message']), errName: stringifyField(obj['name']) };
       }
     }
     return obj;
   }
-  return { err: String(err) };
+  return { err: stringifyField(err) };
 }
 
 export const logger = {

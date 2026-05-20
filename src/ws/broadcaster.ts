@@ -1,14 +1,25 @@
+import { randomUUID } from 'node:crypto';
 import { WebSocket } from 'ws';
 import { env } from '../config/env';
 import { logger } from '../utils/logger';
 import { clientRegistry } from './clientRegistry';
-import type { ClientBroadcast } from './schemas';
+import type { ServerOutboundEnvelope, ServerOutboundType } from './schemas';
 
-// Fans messages to every connected /ws/client. Slow/dead sockets do not block
-// the iteration — ws.send buffers internally and the heartbeat layer kills
-// connections that never drain.
-function broadcastRaw(message: ClientBroadcast): void {
+// Wraps every outbound /ws/client message in the standard v=1 envelope.
+// Every message — broadcasts, acks, shutdown notice — flows through here so
+// the wire format stays consistent across the entire client surface.
+function emit(type: ServerOutboundType, payload: object): void {
+  const message: ServerOutboundEnvelope = {
+    v: 1,
+    type,
+    id: randomUUID(),
+    timestamp: new Date().toISOString(),
+    payload,
+  };
   const serialized = JSON.stringify(message);
+  // Fans to every connected /ws/client. Slow/dead sockets do not block the
+  // iteration — ws.send buffers internally and the heartbeat layer kills
+  // connections that never drain.
   for (const conn of clientRegistry.all()) {
     if (conn.ws.readyState !== WebSocket.OPEN) continue;
     try {
@@ -69,35 +80,34 @@ export function broadcastDeviceOffline(deviceId: string, deviceName: string): vo
 }
 
 function broadcastDeviceStatus(deviceId: string, deviceName: string, isOnline: boolean): void {
-  broadcastRaw({
-    type: 'device_status_update',
-    data: { deviceId, deviceName, isOnline },
-    timestamp: new Date().toISOString(),
-  });
+  emit('device_status_update', { deviceId, deviceName, isOnline });
 }
 
 // ===== Public broadcast helpers (called from message handlers) =====
+//
+// Each helper accepts a Record<string, unknown> for the payload field — the
+// inserted-row DTOs from the various services are structurally compatible.
 
-export function broadcastTelemetry(data: unknown): void {
-  broadcastRaw({ type: 'telemetry_update', data, timestamp: new Date().toISOString() });
+export function broadcastTelemetry(data: object): void {
+  emit('telemetry_update', data);
 }
 
-export function broadcastEvent(data: unknown): void {
-  broadcastRaw({ type: 'event', data, timestamp: new Date().toISOString() });
+export function broadcastEvent(data: object): void {
+  emit('event', data);
 }
 
-export function broadcastVision(data: unknown): void {
-  broadcastRaw({ type: 'vision_update', data, timestamp: new Date().toISOString() });
+export function broadcastVision(data: object): void {
+  emit('vision_update', data);
 }
 
-export function broadcastCommandStatus(data: unknown): void {
-  broadcastRaw({ type: 'command_status_update', data, timestamp: new Date().toISOString() });
+export function broadcastCommandStatus(data: object): void {
+  emit('command_status_update', data);
 }
 
 // Drain on shutdown: tell clients to reconnect so they don't sit on a half-open
 // socket while Railway restarts the container.
 export function notifyAllClientsShuttingDown(): void {
-  broadcastRaw({ type: 'server_shutting_down', timestamp: new Date().toISOString() });
+  emit('server_shutting_down', {});
 }
 
 export function clearAllPendingAnnouncements(): void {

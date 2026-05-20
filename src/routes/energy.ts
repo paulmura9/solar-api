@@ -3,7 +3,7 @@ import { requireAuth } from '../middleware/auth';
 import { validateQuery } from '../middleware/validate';
 import { asyncHandler } from '../utils/asyncHandler';
 import { getEnergySummaryHandler, getDirtImpactHandler } from '../controllers/energy.controller';
-import { energyQuerySchema, dirtImpactQuerySchema } from '../validators/storage.schema';
+import { energyQuerySchema, dirtImpactQuerySchema } from '../validators/energy.schema';
 
 const router = Router();
 

@@ -46,7 +46,7 @@ export function attachWebSocketServer(httpServer: HttpServer): void {
   clientWss = createClientWss();
 
   httpServer.on('upgrade', (req, socket, head) => {
-    void routeUpgrade(req, socket, head);
+    routeUpgrade(req, socket, head);
   });
 
   startHeartbeatMonitor();
@@ -55,22 +55,22 @@ export function attachWebSocketServer(httpServer: HttpServer): void {
   logger.info('ws.server', `WebSocket server attached: ${PATH_DEVICE} | ${PATH_CLIENT}`);
 }
 
-async function routeUpgrade(req: IncomingMessage, socket: Duplex, head: Buffer): Promise<void> {
+function routeUpgrade(req: IncomingMessage, socket: Duplex, head: Buffer): void {
   const url = req.url ?? '';
   // Strip query string before path-matching — incoming auth doesn't use it,
   // but defending against accidental params is cheap.
   const path = url.split('?')[0] ?? '';
 
   if (path === PATH_DEVICE) {
-    await handleDeviceUpgrade(req, socket, head);
+    handleDeviceUpgrade(req, socket, head);
   } else if (path === PATH_CLIENT) {
-    await handleClientUpgrade(req, socket, head);
+    void handleClientUpgrade(req, socket, head);
   } else {
     rejectUpgrade(socket, RESPONSE_404);
   }
 }
 
-async function handleDeviceUpgrade(req: IncomingMessage, socket: Duplex, head: Buffer): Promise<void> {
+function handleDeviceUpgrade(req: IncomingMessage, socket: Duplex, head: Buffer): void {
   const auth = authenticateDeviceUpgrade(req);
   if (!auth.ok) {
     logger.warn('ws.server', `Device upgrade rejected: reason=${auth.reason} remote=${req.socket.remoteAddress ?? 'unknown'}`);

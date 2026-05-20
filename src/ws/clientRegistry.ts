@@ -57,10 +57,6 @@ class ClientConnectionRegistry {
   size(): number {
     return this.totalCount;
   }
-
-  userCount(): number {
-    return this.byUser.size;
-  }
 }
 
 export const clientRegistry = new ClientConnectionRegistry();

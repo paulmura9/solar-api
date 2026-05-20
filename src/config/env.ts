@@ -73,8 +73,10 @@ const envSchema = z.object({
 const result = envSchema.safeParse(process.env);
 
 if (!result.success) {
-  console.error('Environment variable validation failed:');
-  console.error(result.error.flatten().fieldErrors);
+  // logger reads env, so it can't be loaded yet at this point in bootstrap.
+  // Falling back to plain stderr is the documented exception.
+  console.error('Environment variable validation failed:'); // ok: pre-logger
+  console.error(result.error.flatten().fieldErrors); // ok: pre-logger
   process.exit(1);
 }
 

@@ -145,52 +145,83 @@ export const syncRequestPayloadSchema = z
 export type SyncRequestPayload = z.infer<typeof syncRequestPayloadSchema>;
 
 // ===== Express -> Device messages =====
+//
+// Outgoing commands follow the standard envelope. The command-specific
+// fields (`command_type`, `args`) live inside `payload` so the shape matches
+// every other v=1 message on the wire.
+
+export const outgoingCommandPayloadSchema = z
+  .object({
+    command_type: z.enum(COMMAND_TYPES),
+    args: z.record(z.unknown()),
+  })
+  .strict();
 
 export const outgoingCommandSchema = z
   .object({
     v: z.literal(1),
     type: z.literal('command'),
     id: UUID,
-    command_type: z.enum(COMMAND_TYPES),
-    payload: z.record(z.unknown()),
     timestamp: ISO8601,
+    payload: outgoingCommandPayloadSchema,
   })
   .strict();
 
 export type OutgoingCommand = z.infer<typeof outgoingCommandSchema>;
 
-export const heartbeatAckSchema = z
-  .object({
-    v: z.literal(1),
-    type: z.literal('heartbeat_ack'),
-    timestamp: ISO8601,
-  })
-  .strict();
-
 // ===== Client -> Express messages =====
+//
+// Client inbound also wraps in the standard envelope. `payload.token` carries
+// the new JWT on reauth; future client→server message types will discriminate
+// on envelope.type and validate their own payload schema in the dispatcher.
 
-const clientReauthSchema = z
+export const clientReauthPayloadSchema = z
   .object({
-    type: z.literal('reauth'),
     token: z.string().min(1),
   })
   .strict();
 
-export const clientIncomingMessageSchema = z.discriminatedUnion('type', [clientReauthSchema]);
+export type ClientReauthPayload = z.infer<typeof clientReauthPayloadSchema>;
 
-export type ClientIncomingMessage = z.infer<typeof clientIncomingMessageSchema>;
+export const CLIENT_MESSAGE_TYPES = ['reauth'] as const;
+export type ClientMessageType = (typeof CLIENT_MESSAGE_TYPES)[number];
+
+// Client inbound envelope: same shape as device envelope, distinct schema so
+// the type union is constrained to legal client message types.
+export const clientIncomingEnvelopeSchema = z
+  .object({
+    v: z.literal(1),
+    type: z.enum(CLIENT_MESSAGE_TYPES),
+    id: UUID,
+    timestamp: ISO8601,
+    payload: z.unknown(),
+  })
+  .strict();
+
+export type ClientIncomingEnvelope = z.infer<typeof clientIncomingEnvelopeSchema>;
 
 // ===== Express -> Client broadcast types =====
 //
-// The broadcaster (src/ws/broadcaster.ts) emits these to all connected clients.
-// Kept as TypeScript discriminated union — clients don't validate inbound
-// from a trusted server, but we want compile-time exhaustiveness on the sender.
+// All outbound /ws/client messages follow the envelope. `payload` carries
+// the per-type data; `data` field is no longer used.
 
-export type ClientBroadcast =
-  | { type: 'telemetry_update'; data: unknown; timestamp: string }
-  | { type: 'event'; data: unknown; timestamp: string }
-  | { type: 'vision_update'; data: unknown; timestamp: string }
-  | { type: 'command_status_update'; data: unknown; timestamp: string }
-  | { type: 'device_status_update'; data: unknown; timestamp: string }
-  | { type: 'server_shutting_down'; timestamp: string }
-  | { type: 'reauth_ok'; timestamp: string };
+export const SERVER_OUTBOUND_TYPES = [
+  'telemetry_update',
+  'event',
+  'vision_update',
+  'command_status_update',
+  'device_status_update',
+  'server_shutting_down',
+  'reauth_ok',
+] as const;
+export type ServerOutboundType = (typeof SERVER_OUTBOUND_TYPES)[number];
+
+export interface ServerOutboundEnvelope {
+  v: 1;
+  type: ServerOutboundType;
+  id: string;
+  timestamp: string;
+  // `object` matches the wire spec ("payload: object") and accepts any
+  // non-null structured value — DTOs from services, plain records, etc.
+  payload: object;
+}

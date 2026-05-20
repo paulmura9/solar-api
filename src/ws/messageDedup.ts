@@ -21,7 +21,3 @@ export function checkAndRecord(messageId: string): boolean {
   cache.set(messageId, true);
   return true;
 }
-
-export function dedupCacheSize(): number {
-  return cache.size;
-}

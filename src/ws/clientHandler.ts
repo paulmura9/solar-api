@@ -1,10 +1,16 @@
+import { randomUUID } from 'node:crypto';
 import type { IncomingMessage } from 'node:http';
 import { WebSocket, WebSocketServer } from 'ws';
 import { isAuthRetryableFetchError } from '@supabase/supabase-js';
 import { supabase } from '../config/supabase';
 import { logger } from '../utils/logger';
 import { clientRegistry, type ClientConnection } from './clientRegistry';
-import { clientIncomingMessageSchema } from './schemas';
+import {
+  clientIncomingEnvelopeSchema,
+  clientReauthPayloadSchema,
+  type ClientIncomingEnvelope,
+  type ServerOutboundEnvelope,
+} from './schemas';
 
 // JWT is delivered via the Sec-WebSocket-Protocol header rather than a URL
 // query parameter. URLs end up in access logs, browser history, and Referer
@@ -99,27 +105,42 @@ async function handleClientMessage(
     return;
   }
 
-  const result = clientIncomingMessageSchema.safeParse(parsed);
-  if (!result.success) {
-    logger.warn('ws.clientHandler', `Unknown/invalid message from user=${conn.userId}`);
+  const envelopeResult = clientIncomingEnvelopeSchema.safeParse(parsed);
+  if (!envelopeResult.success) {
+    logger.warn(
+      'ws.clientHandler',
+      `Invalid envelope from user=${conn.userId}: ${envelopeResult.error.issues[0]?.message ?? 'unknown'}`
+    );
     return;
   }
 
-  const msg = result.data;
-  switch (msg.type) {
+  const envelope: ClientIncomingEnvelope = envelopeResult.data;
+  await dispatchEnvelope(conn, envelope);
+}
+
+async function dispatchEnvelope(conn: ClientConnection, envelope: ClientIncomingEnvelope): Promise<void> {
+  switch (envelope.type) {
     case 'reauth':
-      await handleReauth(conn, msg.token);
-      break;
+      await handleReauth(conn, envelope.payload);
+      return;
     default: {
-      // Exhaustiveness check — TS will error here if a new message type is
-      // added to the schema without a handler.
-      const _exhaustive: never = msg.type;
+      // Exhaustiveness check — TS errors if a new client message type is
+      // added to CLIENT_MESSAGE_TYPES without a case here.
+      const _exhaustive: never = envelope.type;
       void _exhaustive;
     }
   }
 }
 
-async function handleReauth(conn: ClientConnection, token: string): Promise<void> {
+async function handleReauth(conn: ClientConnection, payload: unknown): Promise<void> {
+  const payloadResult = clientReauthPayloadSchema.safeParse(payload);
+  if (!payloadResult.success) {
+    logger.warn('ws.clientHandler', `reauth payload invalid from user=${conn.userId}`);
+    conn.ws.close(CLOSE_CODE_REAUTH_FAILED, 'reauth_failed');
+    return;
+  }
+  const { token } = payloadResult.data;
+
   try {
     const { data, error } = await supabase.auth.getUser(token);
     if (error || !data.user) {
@@ -141,7 +162,14 @@ async function handleReauth(conn: ClientConnection, token: string): Promise<void
     }
 
     conn.lastReauthAt = Date.now();
-    conn.ws.send(JSON.stringify({ type: 'reauth_ok', timestamp: new Date().toISOString() }));
+    const ack: ServerOutboundEnvelope = {
+      v: 1,
+      type: 'reauth_ok',
+      id: randomUUID(),
+      timestamp: new Date().toISOString(),
+      payload: {},
+    };
+    conn.ws.send(JSON.stringify(ack));
   } catch (err) {
     logger.error('ws.clientHandler', `Reauth unexpected error for user=${conn.userId}`, err);
     conn.ws.close(CLOSE_CODE_REAUTH_FAILED, 'reauth_failed');

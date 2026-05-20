@@ -1,9 +1,9 @@
-import { Request, Response, NextFunction } from 'express';
+import { Request, Response, NextFunction, RequestHandler } from 'express';
 import { isAuthRetryableFetchError } from '@supabase/supabase-js';
 import { supabase } from '../config/supabase';
 import { logger } from '../utils/logger';
 
-export async function requireAuth(req: Request, res: Response, next: NextFunction): Promise<void> {
+async function requireAuthImpl(req: Request, res: Response, next: NextFunction): Promise<void> {
   const authHeader = req.headers['authorization'];
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     res.status(401).json({ error: 'Missing or invalid authorization header' });
@@ -37,3 +37,9 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
     res.status(401).json({ error: 'Token validation failed' });
   }
 }
+
+// Wrap the async impl so Express receives a sync (req,res,next)=>void signature.
+// Any thrown error from token validation is forwarded to the global error handler.
+export const requireAuth: RequestHandler = (req, res, next) => {
+  requireAuthImpl(req, res, next).catch(next);
+};
