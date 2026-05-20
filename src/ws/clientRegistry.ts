@@ -8,8 +8,6 @@ export interface ClientConnection {
   lastReauthAt: number;
 }
 
-// Multiple clients per userId allowed (laptop + phone, multiple tabs). Each
-// connection holds its own lastReauthAt because tabs refresh independently.
 class ClientConnectionRegistry {
   private readonly byUser = new Map<string, Set<ClientConnection>>();
   private totalCount = 0;

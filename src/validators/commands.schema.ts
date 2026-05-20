@@ -1,7 +1,6 @@
 import { z } from 'zod';
 import { COMMAND_STATUSES } from '../utils/constants';
 
-// Hardware servo safe limits: 5–175 degrees (avoids mechanical end-stops at 0/180)
 const servoAngle = z.number().int().min(5).max(175);
 
 export const createCommandSchema = z.discriminatedUnion('command_type', [

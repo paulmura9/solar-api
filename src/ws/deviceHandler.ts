@@ -39,8 +39,6 @@ import {
   type WsEnvelope,
 } from './schemas';
 
-// ===== Authentication (runs during HTTP upgrade) =====
-
 type DeviceAuthResult = { ok: true; deviceId: string } | { ok: false; reason: string };
 
 const DEVICE_KEY_BUFFER: Buffer = Buffer.from(env.DEVICE_API_KEY, 'utf8');
@@ -54,17 +52,11 @@ export function authenticateDeviceUpgrade(req: IncomingMessage): DeviceAuthResul
     return { ok: false, reason: 'missing_headers' };
   }
 
-  // Pre-check length so timingSafeEqual doesn't throw on mismatched-length
-  // buffers. Key length is not secret (it's a fixed-format token), so this
-  // doesn't leak useful information.
   const providedBuf = Buffer.from(headerKey, 'utf8');
   if (providedBuf.length !== DEVICE_KEY_BUFFER.length) {
     return { ok: false, reason: 'invalid_key' };
   }
 
-  // timingSafeEqual processes every byte before returning, preventing the
-  // attacker from inferring how many leading characters of the key are
-  // correct via response-timing measurement.
   if (!crypto.timingSafeEqual(providedBuf, DEVICE_KEY_BUFFER)) {
     return { ok: false, reason: 'invalid_key' };
   }
@@ -73,9 +65,6 @@ export function authenticateDeviceUpgrade(req: IncomingMessage): DeviceAuthResul
     return { ok: false, reason: 'invalid_device_id' };
   }
 
-  // Phase-1 thesis scope: only the configured EXPECTED_DEVICE_ID may connect.
-  // Multi-device support would lift this check and key the registry on the
-  // header value, possibly with per-device credentials.
   if (headerId !== env.EXPECTED_DEVICE_ID) {
     return { ok: false, reason: 'unexpected_device_id' };
   }
@@ -87,14 +76,10 @@ export function createDeviceWss(): WebSocketServer {
   return new WebSocketServer({ noServer: true });
 }
 
-// ===== Connection lifecycle =====
-
 export function registerDeviceConnection(ws: WebSocket, deviceId: string): void {
   const conn = deviceRegistry.register(ws, deviceId);
   logger.info('ws.deviceHandler', `Device connected: ${deviceId}`);
 
-  // Pi being connected implies the gateway process is running. ESP32 status
-  // is tracked separately (set by telemetry/heartbeat below).
   void upsertDeviceStatus('RASPBERRY_PI', true, null, 'WebSocket connected');
   scheduleDeviceOnlineBroadcast(deviceId, 'RASPBERRY_PI');
 
@@ -131,16 +116,10 @@ async function onDeviceDisconnected(deviceId: string, reason: string): Promise<v
     severity: 'WARNING',
     message: `Pi disconnected (${reason})`,
   });
-  // The Pi disappearing means ESP32 reachability is unknown — but we don't
-  // know it's offline. Leave ESP32 status alone; the cron offline-detector
-  // (jobs/deviceOfflineJob.ts) will catch it via last_seen if no heartbeat
-  // arrives.
+
   broadcastDeviceOffline(deviceId, 'RASPBERRY_PI');
 }
 
-// Protocol ping/pong runs alongside application heartbeats. ping/pong catches
-// dead TCP (NAT timeout, network drop) before TCP keepalive fires; heartbeat
-// catches a stuck application that's still holding a healthy socket.
 function setupProtocolPing(conn: DeviceConnection): void {
   const pingInterval = setInterval(() => {
     if (conn.ws.readyState !== WebSocket.OPEN) {
@@ -166,8 +145,6 @@ function setupProtocolPing(conn: DeviceConnection): void {
   conn.ws.once('close', () => clearInterval(pingInterval));
 }
 
-// ===== Message pipeline =====
-
 async function handleDeviceMessage(
   conn: DeviceConnection,
   raw: Buffer | ArrayBuffer | Buffer[]
@@ -175,29 +152,25 @@ async function handleDeviceMessage(
   conn.lastMessageAt = Date.now();
   conn.messageCount++;
 
-  // 1. Per-connection rate limit.
   if (!checkRateLimit(conn.rateLimit)) {
     logger.warn('ws.deviceHandler', `Rate limit exceeded for ${conn.deviceId} — closing`);
     try {
       conn.ws.close(1008, 'rate_limit');
     } catch {
-      // already broken
     }
     return;
   }
 
-  // 2. JSON.
   let parsed: unknown;
   try {
     const text = bufferToString(raw);
     parsed = JSON.parse(text);
   } catch {
-    // Transient garbage — don't close. The Pi will recover on its own.
+
     logger.warn('ws.deviceHandler', `Invalid JSON from ${conn.deviceId}`);
     return;
   }
 
-  // 3. Envelope shape.
   const envResult = wsEnvelopeSchema.safeParse(parsed);
   if (!envResult.success) {
     logger.warn('ws.deviceHandler', `Invalid envelope from ${conn.deviceId}: ${envResult.error.issues[0]?.message ?? 'unknown'}`);
@@ -205,19 +178,15 @@ async function handleDeviceMessage(
   }
   const envelope: WsEnvelope = envResult.data;
 
-  // 4. Idempotency.
   if (!checkAndRecord(envelope.id)) {
     logger.debug('ws.deviceHandler', `Duplicate message ${envelope.id} from ${conn.deviceId} — ignoring`);
     return;
   }
 
-  // 5. Dispatch.
   try {
     await dispatchEnvelope(conn, envelope);
   } catch (err) {
-    // Handler errors are typically transient (DB hiccup). Don't kill the
-    // connection — the Pi will retry, the heartbeat path stays alive, and
-    // permanent corruption will surface as repeated failures in the logs.
+
     logger.error('ws.deviceHandler', `Handler error for type=${envelope.type} from ${conn.deviceId}`, err);
   }
 }
@@ -242,8 +211,6 @@ async function dispatchEnvelope(conn: DeviceConnection, envelope: WsEnvelope): P
     return;
   }
 
-  // Narrowed to DeviceMessageType — adding a new value to DEVICE_MESSAGE_TYPES
-  // without a case here triggers the assertNever below at compile time.
   switch (envelope.type) {
     case 'telemetry':
       await handleTelemetry(envelope.payload);
@@ -270,8 +237,6 @@ async function dispatchEnvelope(conn: DeviceConnection, envelope: WsEnvelope): P
   }
 }
 
-// ===== Handlers =====
-
 async function handleTelemetry(payload: unknown): Promise<void> {
   const result = telemetryPayloadSchema.safeParse(payload);
   if (!result.success) {
@@ -287,7 +252,6 @@ async function handleTelemetry(payload: unknown): Promise<void> {
   const inserted = await insertTelemetry(result.data);
   if (!inserted) return;
 
-  // Telemetry implies the ESP32 just reported in.
   await upsertDeviceStatus('ESP32', true, null, 'Telemetry received');
   broadcastTelemetry(inserted);
 }
@@ -355,8 +319,6 @@ async function handleHeartbeat(conn: DeviceConnection, payload: unknown): Promis
   }
   conn.lastHeartbeatAt = Date.now();
 
-  // Mark Pi alive on every heartbeat (its existence is the heartbeat). ESP32
-  // status follows the Pi's report.
   await upsertDeviceStatus('RASPBERRY_PI', true, null, 'Heartbeat');
   if (result.data.esp32_alive !== undefined) {
     await upsertDeviceStatus(
@@ -367,8 +329,6 @@ async function handleHeartbeat(conn: DeviceConnection, payload: unknown): Promis
     );
   }
 
-  // Heartbeat ack is a lightweight liveness signal back to the Pi so it can
-  // tell our side is processing messages (vs. just holding the socket).
   if (conn.ws.readyState === WebSocket.OPEN) {
     const ack = {
       v: 1 as const,
@@ -419,8 +379,7 @@ async function handleSyncRequest(conn: DeviceConnection, payload: unknown): Prom
         args: cmd.payload,
       },
     };
-    // Validate before sending — guards against a corrupt row that would crash
-    // the Pi's parser. A bad row gets skipped, not retried.
+
     const validated = outgoingCommandSchema.safeParse(outgoing);
     if (!validated.success) {
       logger.error('ws.deviceHandler', `Skipping malformed command ${cmd.id} during resync`, validated.error.issues);
@@ -435,8 +394,6 @@ async function handleSyncRequest(conn: DeviceConnection, payload: unknown): Prom
     }
   }
 }
-
-// ===== Outgoing command (used by the REST POST /api/commands path) =====
 
 export function sendCommandToDevice(
   deviceId: string,
@@ -473,8 +430,6 @@ export function sendCommandToDevice(
     return false;
   }
 }
-
-// ===== Utilities =====
 
 function bufferToString(raw: Buffer | ArrayBuffer | Buffer[]): string {
   if (Buffer.isBuffer(raw)) return raw.toString('utf8');

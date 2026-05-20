@@ -2,12 +2,6 @@ import { supabase } from '../config/supabase';
 import { logger } from '../utils/logger';
 import type { TelemetryPayload } from '../ws/schemas';
 
-// Thin write-path for sensor_readings used by the WebSocket device handler.
-// Read-path lives in src/controllers/readings.controller.ts and stays as-is.
-//
-// Columns explicit (no INSERT *) so a schema migration on Supabase can add
-// fields without silently coercing them from the payload.
-
 const RETURN_COLUMNS =
   'id, timestamp, horizontal_angle, vertical_angle, tracking_mode, is_moving, battery_voltage, solar_power, created_at';
 

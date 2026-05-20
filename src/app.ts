@@ -23,14 +23,12 @@ app.set('trust proxy', 1);
 
 app.use(helmet({
   frameguard: { action: 'deny' },
-  // API is consumed cross-origin by the Vercel frontend, so cross-origin policy is required.
-  // same-site would block legitimate frontend requests.
+
   crossOriginResourcePolicy: { policy: 'cross-origin' },
 }));
 app.use(cors({
   origin: corsOrigins,
-  // Bearer token auth via Authorization header, no cookies cross-origin.
-  // credentials: false reduces CSRF surface and matches the actual auth model.
+
   credentials: false,
   methods: ['GET', 'POST'],
   allowedHeaders: ['Content-Type', 'Authorization'],

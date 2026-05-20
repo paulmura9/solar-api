@@ -24,8 +24,6 @@ export async function getEnergySummary(days: number): Promise<EnergySummaryDTO> 
 
   const rows = data ?? [];
 
-  // solar_energy_today_wh resets daily. Sum the daily maximum per
-  // calendar day to get the correct total over a multi-day period.
   const generatedByDay = new Map<string, number>();
   const deliveredByDay = new Map<string, number>();
 

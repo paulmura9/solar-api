@@ -27,9 +27,6 @@ import {
 const PATH_DEVICE = '/ws/device';
 const PATH_CLIENT = '/ws/client';
 
-// HTTP status lines for failed upgrades. The bodies are intentionally generic:
-// detail about *why* the auth failed goes to the server logs, never back to
-// the client (information leaks help enumeration attacks).
 const RESPONSE_401 = 'HTTP/1.1 401 Unauthorized\r\nConnection: close\r\n\r\n';
 const RESPONSE_503 = 'HTTP/1.1 503 Service Unavailable\r\nConnection: close\r\n\r\n';
 const RESPONSE_404 = 'HTTP/1.1 404 Not Found\r\nConnection: close\r\n\r\n';
@@ -57,8 +54,7 @@ export function attachWebSocketServer(httpServer: HttpServer): void {
 
 function routeUpgrade(req: IncomingMessage, socket: Duplex, head: Buffer): void {
   const url = req.url ?? '';
-  // Strip query string before path-matching — incoming auth doesn't use it,
-  // but defending against accidental params is cheap.
+
   const path = url.split('?')[0] ?? '';
 
   if (path === PATH_DEVICE) {
@@ -110,34 +106,23 @@ function rejectUpgrade(socket: Duplex, response: string): void {
   try {
     socket.write(response);
   } catch {
-    // socket may already be dead; nothing useful to do
   }
   socket.destroy();
 }
-
-// ===== Public introspection (used by /health) =====
 
 export function wsCounts(): { devices: number; clients: number } {
   return { devices: deviceRegistry.size(), clients: clientRegistry.size() };
 }
 
-// ===== Shutdown =====
-
 export async function shutdownWebSocketServer(): Promise<void> {
   logger.info('ws.server', 'Shutting down WebSocket server');
 
-  // Tell clients to reconnect before we yank the sockets — gives the UI a
-  // chance to show a "reconnecting…" state cleanly.
   notifyAllClientsShuttingDown();
   clearAllPendingAnnouncements();
 
-  // Stop schedulers so they don't fire mid-drain.
   stopHeartbeatMonitor();
   stopClientTokenWatchdog();
 
-  // Best-effort close every active socket; we then race them against a
-  // shutdown budget. Any sockets still open after the budget will be killed
-  // when the http.Server closes.
   const closeOne = (ws: WebSocket): Promise<void> =>
     new Promise((resolve) => {
       if (ws.readyState === WebSocket.CLOSED) {
@@ -161,7 +146,6 @@ export async function shutdownWebSocketServer(): Promise<void> {
     new Promise<void>((resolve) => setTimeout(resolve, env.GRACEFUL_SHUTDOWN_DRAIN_MS).unref()),
   ]);
 
-  // Hard-terminate anything still hanging on.
   for (const conn of deviceRegistry.values()) {
     if (conn.ws.readyState !== WebSocket.CLOSED) conn.ws.terminate();
   }

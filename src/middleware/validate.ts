@@ -26,9 +26,7 @@ export function validateQuery<T>(schema: ZodType<T>): RequestHandler {
       });
       return;
     }
-    // After zod coercion req.query may contain numbers/booleans even though
-    // Express types it as ParsedQs (string-only). Assigning through an
-    // intermediate works because the destructure at the call sites is loose.
+
     Object.assign(req.query, result.data as Record<string, unknown>);
     next();
   };

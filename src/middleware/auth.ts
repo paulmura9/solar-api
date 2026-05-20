@@ -38,8 +38,6 @@ async function requireAuthImpl(req: Request, res: Response, next: NextFunction):
   }
 }
 
-// Wrap the async impl so Express receives a sync (req,res,next)=>void signature.
-// Any thrown error from token validation is forwarded to the global error handler.
 export const requireAuth: RequestHandler = (req, res, next) => {
   requireAuthImpl(req, res, next).catch(next);
 };

@@ -14,28 +14,18 @@ import {
   CONFIDENCE_MAX,
 } from '../utils/constants';
 
-// ===== Wire-format primitives =====
-
 const ISO8601 = z.string().datetime({ offset: true });
 const UUID = z.string().uuid();
 
-// Telemetry stores whatever the ESP32 reports. Servo command limits (5..175)
-// are enforced on outgoing commands only — the ESP32 may briefly report angles
-// outside that band during initialization or fault recovery.
 const SERVO_REPORT_MIN = 0;
 const SERVO_REPORT_MAX = 180;
 
-// Battery voltage hard cap — anything outside this is a sensor fault.
 const BATTERY_VOLTAGE_MIN = 0;
 const BATTERY_VOLTAGE_MAX = 20;
 const SOLAR_VOLTAGE_MAX = 30;
 const SOLAR_CURRENT_MAX = 10;
 const SOLAR_POWER_MAX = 300;
 
-// Envelope: every WS message carries v/type/id/timestamp/payload.
-// We parse the envelope first to ack early validation; payload schema runs
-// in the dispatcher so the failure mode is "valid envelope, bad payload"
-// rather than swallowing both layers.
 export const wsEnvelopeSchema = z
   .object({
     v: z.literal(1),
@@ -47,8 +37,6 @@ export const wsEnvelopeSchema = z
   .strict();
 
 export type WsEnvelope = z.infer<typeof wsEnvelopeSchema>;
-
-// ===== Device -> Express payloads =====
 
 export const telemetryPayloadSchema = z
   .object({
@@ -117,8 +105,7 @@ export const visionResultPayloadSchema = z
   })
   .strict()
   .refine(
-    // The two percentages model the same observation from opposite directions
-    // and must sum to ~100. Tolerance covers float rounding only.
+
     (data) => Math.abs(data.dirt_level_percent + data.cleanliness_percent - 100) < 0.1,
     { message: 'dirt_level_percent + cleanliness_percent must equal 100' }
   );
@@ -133,8 +120,6 @@ export const heartbeatPayloadSchema = z
 
 export type HeartbeatPayload = z.infer<typeof heartbeatPayloadSchema>;
 
-// Pi reconnect sync: "I'm back, here's my last known command id and ESP32 state.
-// Give me everything you've queued since."
 export const syncRequestPayloadSchema = z
   .object({
     last_command_id: UUID.nullable(),
@@ -143,12 +128,6 @@ export const syncRequestPayloadSchema = z
   .strict();
 
 export type SyncRequestPayload = z.infer<typeof syncRequestPayloadSchema>;
-
-// ===== Express -> Device messages =====
-//
-// Outgoing commands follow the standard envelope. The command-specific
-// fields (`command_type`, `args`) live inside `payload` so the shape matches
-// every other v=1 message on the wire.
 
 export const outgoingCommandPayloadSchema = z
   .object({
@@ -169,12 +148,6 @@ export const outgoingCommandSchema = z
 
 export type OutgoingCommand = z.infer<typeof outgoingCommandSchema>;
 
-// ===== Client -> Express messages =====
-//
-// Client inbound also wraps in the standard envelope. `payload.token` carries
-// the new JWT on reauth; future client→server message types will discriminate
-// on envelope.type and validate their own payload schema in the dispatcher.
-
 export const clientReauthPayloadSchema = z
   .object({
     token: z.string().min(1),
@@ -186,8 +159,6 @@ export type ClientReauthPayload = z.infer<typeof clientReauthPayloadSchema>;
 export const CLIENT_MESSAGE_TYPES = ['reauth'] as const;
 export type ClientMessageType = (typeof CLIENT_MESSAGE_TYPES)[number];
 
-// Client inbound envelope: same shape as device envelope, distinct schema so
-// the type union is constrained to legal client message types.
 export const clientIncomingEnvelopeSchema = z
   .object({
     v: z.literal(1),
@@ -199,11 +170,6 @@ export const clientIncomingEnvelopeSchema = z
   .strict();
 
 export type ClientIncomingEnvelope = z.infer<typeof clientIncomingEnvelopeSchema>;
-
-// ===== Express -> Client broadcast types =====
-//
-// All outbound /ws/client messages follow the envelope. `payload` carries
-// the per-type data; `data` field is no longer used.
 
 export const SERVER_OUTBOUND_TYPES = [
   'telemetry_update',
@@ -221,7 +187,6 @@ export interface ServerOutboundEnvelope {
   type: ServerOutboundType;
   id: string;
   timestamp: string;
-  // `object` matches the wire spec ("payload: object") and accepts any
-  // non-null structured value — DTOs from services, plain records, etc.
+
   payload: object;
 }

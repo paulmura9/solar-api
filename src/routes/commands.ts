@@ -11,8 +11,6 @@ const router = Router();
 
 router.use(requireAuth);
 
-// Users may share IPs behind NAT. Limiting per user prevents one compromised JWT from
-// spamming commands regardless of network topology.
 const commandLimiter = rateLimit({
   windowMs: 60_000,
   max: 10,
