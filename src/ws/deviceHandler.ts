@@ -351,12 +351,6 @@ async function handleSyncRequest(conn: DeviceConnection, payload: unknown): Prom
   }
 
   await upsertDeviceStatus('RASPBERRY_PI', true, null, 'Resync');
-  await upsertDeviceStatus(
-    'ESP32',
-    result.data.esp32_alive,
-    null,
-    result.data.esp32_alive ? 'Reported alive on Pi resync' : 'Reported offline on Pi resync'
-  );
 
   const pending = await findCommandsForResync(result.data.last_command_id);
   logger.info(

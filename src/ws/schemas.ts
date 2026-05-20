@@ -114,12 +114,9 @@ export const heartbeatPayloadSchema = z
   })
   .strict();
 
-export const syncRequestPayloadSchema = z
-  .object({
-    last_command_id: UUID.nullable(),
-    esp32_alive: z.boolean(),
-  })
-  .strict();
+export const syncRequestPayloadSchema = z.object({
+  last_command_id: UUID.nullable(),
+});
 
 export const outgoingCommandSchema = z
   .object({

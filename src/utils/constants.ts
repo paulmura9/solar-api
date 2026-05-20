@@ -1,4 +1,4 @@
-export const TRACKING_MODES = ['AUTO', 'MANUAL', 'IDLE', 'ERROR'] as const;
+export const TRACKING_MODES = ['AUTO', 'MANUAL', 'NIGHT', 'IDLE', 'ERROR'] as const;
 export const BATTERY_STATUSES = ['CHARGING', 'DISCHARGING', 'IDLE', 'LOW', 'UNKNOWN'] as const;
 export const COMMAND_STATUSES = ['PENDING', 'SENT', 'ACKNOWLEDGED', 'FAILED'] as const;
 export const SEVERITIES = ['INFO', 'WARNING', 'ERROR', 'CRITICAL'] as const;
