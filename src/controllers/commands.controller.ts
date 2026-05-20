@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { createCommand, getRecentCommands } from '../services/commandService';
+import { createAndDispatchCommand, getRecentCommands } from '../services/commandService';
 import type { CommandType, DeviceCommandDTO } from '../types/command';
 
 function toResponse(dto: DeviceCommandDTO): object {
@@ -21,7 +21,7 @@ export async function postCommand(req: Request, res: Response): Promise<void> {
     payload: Record<string, unknown>;
   };
 
-  const command = await createCommand(command_type, payload);
+  const command = await createAndDispatchCommand(command_type, payload);
 
   res.status(201).json({
     data: toResponse(command),

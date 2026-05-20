@@ -26,16 +26,15 @@ import {
   cancelPendingOnlineBroadcast,
   scheduleDeviceOnlineBroadcast,
 } from './broadcaster';
+import { dispatchCommandToDevice } from './commandDispatch';
 import {
   commandAckPayloadSchema,
   esp32EventPayloadSchema,
   heartbeatPayloadSchema,
-  outgoingCommandSchema,
   syncRequestPayloadSchema,
   telemetryPayloadSchema,
   visionResultPayloadSchema,
   wsEnvelopeSchema,
-  type OutgoingCommand,
   type WsEnvelope,
 } from './schemas';
 
@@ -360,29 +359,12 @@ async function handleSyncRequest(conn: DeviceConnection, payload: unknown): Prom
 
   for (const cmd of pending) {
     if (conn.ws.readyState !== WebSocket.OPEN) break;
-    const outgoing: OutgoingCommand = {
-      v: 1,
-      type: 'command',
-      id: cmd.id,
-      timestamp: cmd.createdAt,
-      payload: {
-        command_type: cmd.commandType,
-        args: cmd.payload,
-      },
-    };
-
-    const validated = outgoingCommandSchema.safeParse(outgoing);
-    if (!validated.success) {
-      logger.error('ws.deviceHandler', `Skipping malformed command ${cmd.id} during resync`, validated.error.issues);
-      continue;
-    }
-    try {
-      conn.ws.send(JSON.stringify(validated.data));
-      await markCommandSent(cmd.id);
-    } catch (err) {
-      logger.error('ws.deviceHandler', `Resync send failed for command ${cmd.id}`, err);
+    const sent = dispatchCommandToDevice(cmd.id, cmd.commandType, cmd.payload, cmd.createdAt);
+    if (!sent) {
+      logger.error('ws.deviceHandler', `Resync send failed for command ${cmd.id}`);
       break;
     }
+    await markCommandSent(cmd.id);
   }
 }
 

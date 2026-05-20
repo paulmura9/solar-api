@@ -1,7 +1,9 @@
+import { randomUUID } from 'node:crypto';
 import { supabase } from '../config/supabase';
 import { logger } from '../utils/logger';
 import { insertEvent } from './eventService';
 import { env } from '../config/env';
+import { dispatchCommandToDevice } from '../ws/commandDispatch';
 import type { DeviceCommandDTO, CommandType, CommandStatus } from '../types/command';
 
 const COMMAND_COLUMNS = 'id, command_type, payload, status, error_message, created_at, sent_at, acknowledged_at';
@@ -19,21 +21,37 @@ function rowToDTO(row: Record<string, unknown>): DeviceCommandDTO {
   };
 }
 
-export async function createCommand(
+export async function createAndDispatchCommand(
   commandType: CommandType,
   payload: Record<string, unknown>
 ): Promise<DeviceCommandDTO> {
-  const response = await supabase
-    .from('device_commands')
-    .insert({ command_type: commandType, payload, status: 'PENDING' })
-    .select()
-    .single();
+  const id = randomUUID();
+  const createdAt = new Date().toISOString();
 
-  if (response.error || !response.data) {
-    throw new Error(`Failed to insert command: ${response.error?.message ?? 'no data returned'}`);
+  const [insertResult, dispatched] = await Promise.all([
+    supabase
+      .from('device_commands')
+      .insert({ id, command_type: commandType, payload, status: 'PENDING', created_at: createdAt })
+      .select(COMMAND_COLUMNS)
+      .single(),
+    Promise.resolve(dispatchCommandToDevice(id, commandType, payload, createdAt)),
+  ]);
+
+  if (insertResult.error || !insertResult.data) {
+    throw new Error(
+      `Failed to insert command: ${insertResult.error?.message ?? 'no data returned'}`
+    );
   }
 
-  return rowToDTO(response.data as Record<string, unknown>);
+  const dto = rowToDTO(insertResult.data);
+
+  if (dispatched) {
+    const sentAt = new Date().toISOString();
+    void markCommandSent(id, sentAt);
+    return { ...dto, status: 'SENT', sentAt };
+  }
+
+  return dto;
 }
 
 export async function getRecentCommands(limit: number, statusFilter?: string): Promise<DeviceCommandDTO[]> {
@@ -116,10 +134,10 @@ export async function timeoutStaleCommands(): Promise<void> {
   }
 }
 
-export async function markCommandSent(commandId: string): Promise<void> {
+export async function markCommandSent(commandId: string, sentAt?: string): Promise<void> {
   const { error } = await supabase
     .from('device_commands')
-    .update({ status: 'SENT', sent_at: new Date().toISOString() })
+    .update({ status: 'SENT', sent_at: sentAt ?? new Date().toISOString() })
     .eq('id', commandId)
     .eq('status', 'PENDING');
 

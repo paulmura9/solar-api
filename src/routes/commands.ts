@@ -12,11 +12,11 @@ const router = Router();
 router.use(requireAuth);
 
 const commandLimiter = rateLimit({
-  windowMs: 60_000,
+  windowMs: 1_000,
   max: 10,
   standardHeaders: true,
   legacyHeaders: false,
-  message: { error: 'Command rate limit exceeded. Maximum 10 commands per minute.' },
+  message: { error: 'Command rate limit exceeded. Maximum 10 commands per second.' },
   keyGenerator: (req: Request): string => {
     const userId = req.user?.id;
     if (!userId) {
