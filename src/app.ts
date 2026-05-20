@@ -19,6 +19,8 @@ import dashboardRouter from './routes/dashboard';
 
 const app = express();
 
+app.set('trust proxy', 1);
+
 app.use(helmet({
   frameguard: { action: 'deny' },
   // API is consumed cross-origin by the Vercel frontend, so cross-origin policy is required.
