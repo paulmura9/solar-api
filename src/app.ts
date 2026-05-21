@@ -22,6 +22,8 @@ const app = express();
 
 app.set('trust proxy', 1);
 
+app.disable('etag');
+
 app.use(helmet({
   frameguard: { action: 'deny' },
 

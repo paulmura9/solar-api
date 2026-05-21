@@ -2,6 +2,8 @@ import { Router, Request } from 'express';
 import rateLimit from 'express-rate-limit';
 import { requireAuth } from '../middleware/auth';
 import { validate, validateQuery } from '../middleware/validate';
+import { withCacheHeaders, noStore } from '../middleware/cacheHeaders';
+import { cachePolicy } from '../config/cachePolicy';
 import { asyncHandler } from '../utils/asyncHandler';
 import { postCommand, getCommands } from '../controllers/commands.controller';
 import { createCommandSchema, commandQuerySchema } from '../validators/commands.schema';
@@ -27,8 +29,8 @@ const commandLimiter = rateLimit({
   },
 });
 
-router.post('/', commandLimiter, validate(createCommandSchema), asyncHandler(postCommand));
-router.get('/', validateQuery(commandQuerySchema), asyncHandler(getCommands));
-router.get('/recent', validateQuery(commandQuerySchema), asyncHandler(getCommands));
+router.post('/', commandLimiter, noStore, validate(createCommandSchema), asyncHandler(postCommand));
+router.get('/', withCacheHeaders(cachePolicy.commands), validateQuery(commandQuerySchema), asyncHandler(getCommands));
+router.get('/recent', withCacheHeaders(cachePolicy.commands), validateQuery(commandQuerySchema), asyncHandler(getCommands));
 
 export default router;
