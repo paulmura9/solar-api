@@ -2,6 +2,7 @@ import { WebSocket } from 'ws';
 import { logger } from '../utils/logger';
 import { deviceRegistry } from './deviceRegistry';
 import { outgoingCommandSchema, type OutgoingCommand } from './schemas';
+import { incCommandDispatched, incCommandFailed } from '../utils/metrics';
 import type { CommandType } from '../types/command';
 
 export function dispatchCommandToDevice(
@@ -28,6 +29,7 @@ export function dispatchCommandToDevice(
       `Malformed command ${commandId} — refusing to dispatch`,
       validated.error.issues
     );
+    incCommandFailed('validation_error');
     return false;
   }
 
@@ -45,7 +47,12 @@ export function dispatchCommandToDevice(
         `Failed to dispatch command ${commandId} to ${conn.deviceId}`,
         err
       );
+      incCommandFailed('dispatch_failed');
     }
+  }
+
+  if (dispatched) {
+    incCommandDispatched(commandType);
   }
 
   return dispatched;

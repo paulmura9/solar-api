@@ -3,8 +3,14 @@ import { WebSocket } from 'ws';
 import { env } from '../config/env';
 import { logger } from '../utils/logger';
 import { clientRegistry } from './clientRegistry';
+import { incWsBroadcastError } from '../utils/metrics';
 import type { ServerOutboundEnvelope, ServerOutboundType } from './schemas';
 
+// Single-tenant broadcast: every connected client receives every telemetry,
+// event, vision, command-status, and device-status update. This is intentional
+// because the system tracks exactly one device (env.EXPECTED_DEVICE_ID). If
+// this API ever becomes multi-tenant, emit() must filter conn.userId against
+// the owning user/device — otherwise users will see each other's data.
 function emit(type: ServerOutboundType, payload: object): void {
   const message: ServerOutboundEnvelope = {
     v: 1,
@@ -21,6 +27,7 @@ function emit(type: ServerOutboundType, payload: object): void {
       conn.ws.send(serialized);
     } catch (err) {
       logger.error('ws.broadcaster', `Failed to send to client ${conn.userId}`, err);
+      incWsBroadcastError();
     }
   }
 }

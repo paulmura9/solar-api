@@ -17,6 +17,7 @@ import sunRouter from './routes/sun';
 import energyRouter from './routes/energy';
 import healthRouter from './routes/health';
 import dashboardRouter from './routes/dashboard';
+import metricsRouter from './routes/metrics';
 
 const app = express();
 
@@ -57,6 +58,7 @@ const apiLimiter = rateLimit({
 app.use('/api/', apiLimiter);
 
 app.use('/health', healthRouter);
+app.use('/metrics', metricsRouter);
 app.use('/api/readings', readingsRouter);
 app.use('/api/commands', commandsRouter);
 app.use('/api/vision', visionRouter);

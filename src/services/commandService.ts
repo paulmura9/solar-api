@@ -5,6 +5,7 @@ import { insertEvent } from './eventService';
 import { env } from '../config/env';
 import { dispatchCommandToDevice } from '../ws/commandDispatch';
 import { broadcastCommandStatus } from '../ws/broadcaster';
+import { incCommandAcknowledged, incCommandFailed } from '../utils/metrics';
 import type { DeviceCommandDTO, CommandType, CommandStatus } from '../types/command';
 
 const COMMAND_COLUMNS = 'id, command_type, payload, status, error_message, created_at, sent_at, acknowledged_at';
@@ -114,6 +115,8 @@ export async function timeoutSentCommands(): Promise<void> {
 
     logger.warn('commandService', `Command ${commandId} (${commandType}) timed out after ${env.COMMAND_TIMEOUT_SECONDS}s`);
 
+    incCommandFailed('timeout_sent');
+
     broadcastCommandStatus({
       id: commandId,
       status: 'FAILED',
@@ -157,6 +160,7 @@ export async function timeoutPendingCommands(): Promise<void> {
   } else if (timedOutPending && timedOutPending.length > 0) {
     logger.info('commandService', `Timed out ${timedOutPending.length} PENDING command(s) older than ${env.COMMAND_TIMEOUT_SECONDS * 5}s`);
     for (const row of timedOutPending) {
+      incCommandFailed('timeout_pending');
       broadcastCommandStatus({
         id: row.id as string,
         status: 'FAILED',
@@ -213,6 +217,10 @@ export async function acknowledgeCommand(
 
     logger.warn('commandService', `Ack for command ${commandId} ignored (unknown or already terminal)`);
     return null;
+  }
+
+  if (status === 'ACKNOWLEDGED') {
+    incCommandAcknowledged();
   }
 
   return rowToDTO(data);

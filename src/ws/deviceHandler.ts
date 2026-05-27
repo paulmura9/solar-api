@@ -1,4 +1,4 @@
-import crypto, { randomUUID } from 'node:crypto';
+import crypto from 'node:crypto';
 import type { IncomingMessage } from 'node:http';
 import { WebSocket, WebSocketServer } from 'ws';
 
@@ -6,37 +6,24 @@ import { env } from '../config/env';
 import { logger } from '../utils/logger';
 import { insertEvent } from '../services/eventService';
 import { upsertDeviceStatus } from '../services/deviceService';
-import { insertTelemetry } from '../services/telemetryService';
-import { insertVisionResult } from '../services/visionService';
-import {
-  acknowledgeCommand,
-  findCommandsForResync,
-  markCommandSent,
-} from '../services/commandService';
 
 import { deviceRegistry, type DeviceConnection } from './deviceRegistry';
 import { checkRateLimit } from './rateLimit';
 import { checkAndRecord } from './messageDedup';
 import {
-  broadcastCommandStatus,
   broadcastDeviceOffline,
-  broadcastEvent,
-  broadcastTelemetry,
-  broadcastVision,
   cancelPendingOnlineBroadcast,
   scheduleDeviceOnlineBroadcast,
 } from './broadcaster';
-import { dispatchCommandToDevice } from './commandDispatch';
-import {
-  commandAckPayloadSchema,
-  esp32EventPayloadSchema,
-  heartbeatPayloadSchema,
-  syncRequestPayloadSchema,
-  telemetryPayloadSchema,
-  visionResultPayloadSchema,
-  wsEnvelopeSchema,
-  type WsEnvelope,
-} from './schemas';
+import { wsEnvelopeSchema, type WsEnvelope } from './schemas';
+import { bufferToString } from './utils';
+import { incPiReconnect } from '../utils/metrics';
+import { handleTelemetry } from './deviceHandlers/telemetry';
+import { handleCommandAck } from './deviceHandlers/commandAck';
+import { handleEsp32Event } from './deviceHandlers/esp32Event';
+import { handleVisionResult } from './deviceHandlers/vision';
+import { handleHeartbeat } from './deviceHandlers/heartbeat';
+import { handleSyncRequest } from './deviceHandlers/syncRequest';
 
 type DeviceAuthResult = { ok: true; deviceId: string } | { ok: false; reason: string };
 
@@ -71,12 +58,15 @@ export function authenticateDeviceUpgrade(req: IncomingMessage): DeviceAuthResul
   return { ok: true, deviceId: headerId };
 }
 
+const DEVICE_WS_MAX_PAYLOAD_BYTES = 1_000_000;
+
 export function createDeviceWss(): WebSocketServer {
-  return new WebSocketServer({ noServer: true });
+  return new WebSocketServer({ noServer: true, maxPayload: DEVICE_WS_MAX_PAYLOAD_BYTES });
 }
 
 export function registerDeviceConnection(ws: WebSocket, deviceId: string): void {
   const conn = deviceRegistry.register(ws, deviceId);
+  incPiReconnect();
   logger.info('ws.deviceHandler', `Device connected: ${deviceId}`);
 
   void upsertDeviceStatus('RASPBERRY_PI', true, null, 'WebSocket connected');
@@ -153,7 +143,8 @@ async function handleDeviceMessage(
     logger.warn('ws.deviceHandler', `Rate limit exceeded for ${conn.deviceId} — closing`);
     try {
       conn.ws.close(1008, 'rate_limit');
-    } catch {
+    } catch (err) {
+      logger.debug('ws.deviceHandler', `Close after rate_limit failed for ${conn.deviceId}`, err);
     }
     return;
   }
@@ -232,144 +223,4 @@ async function dispatchEnvelope(conn: DeviceConnection, envelope: WsEnvelope): P
       void _exhaustive;
     }
   }
-}
-
-async function handleTelemetry(payload: unknown): Promise<void> {
-  const result = telemetryPayloadSchema.safeParse(payload);
-  if (!result.success) {
-    logger.warn('ws.deviceHandler', `telemetry payload invalid: ${result.error.issues[0]?.message ?? 'unknown'}`);
-    await insertEvent({
-      event_type: 'SENSOR_ERROR',
-      severity: 'WARNING',
-      message: `Invalid telemetry payload: ${result.error.issues[0]?.message ?? 'unknown'}`,
-    });
-    return;
-  }
-
-  const inserted = await insertTelemetry(result.data);
-  if (!inserted) return;
-
-  await upsertDeviceStatus('ESP32', true, null, 'Telemetry received');
-  broadcastTelemetry(inserted);
-}
-
-async function handleCommandAck(payload: unknown): Promise<void> {
-  const result = commandAckPayloadSchema.safeParse(payload);
-  if (!result.success) {
-    logger.warn('ws.deviceHandler', `command_ack payload invalid: ${result.error.issues[0]?.message ?? 'unknown'}`);
-    return;
-  }
-
-  const { commandId, status, error_message } = result.data;
-  const errorMsg = error_message ?? null;
-  const updated = await acknowledgeCommand(commandId, status, errorMsg);
-  if (updated) {
-    broadcastCommandStatus({
-      id: updated.id,
-      status: updated.status,
-      error_message: updated.errorMessage,
-      acknowledged_at: updated.acknowledgedAt,
-    });
-    if (status === 'FAILED') {
-      await insertEvent({
-        event_type: 'COMMAND_FAILED',
-        severity: 'ERROR',
-        message: `Command ${commandId} failed: ${errorMsg ?? 'no detail'}`,
-      });
-    }
-  }
-}
-
-async function handleEsp32Event(payload: unknown): Promise<void> {
-  const result = esp32EventPayloadSchema.safeParse(payload);
-  if (!result.success) {
-    logger.warn('ws.deviceHandler', `esp32_event payload invalid: ${result.error.issues[0]?.message ?? 'unknown'}`);
-    return;
-  }
-  await insertEvent(result.data);
-  broadcastEvent(result.data);
-}
-
-async function handleVisionResult(payload: unknown): Promise<void> {
-  const result = visionResultPayloadSchema.safeParse(payload);
-  if (!result.success) {
-    logger.warn('ws.deviceHandler', `vision_result payload invalid: ${result.error.issues[0]?.message ?? 'unknown'}`);
-    return;
-  }
-  const inserted = await insertVisionResult(result.data);
-  if (!inserted) return;
-  broadcastVision(inserted);
-  if (inserted.cleaningRequired) {
-    await insertEvent({
-      event_type: 'CLEANING_REQUIRED',
-      severity: 'WARNING',
-      message: `Vision pipeline flagged cleaning required (dirt=${inserted.dirtLevelPercent}%)`,
-    });
-  }
-}
-
-async function handleHeartbeat(conn: DeviceConnection, payload: unknown): Promise<void> {
-  const result = heartbeatPayloadSchema.safeParse(payload);
-  if (!result.success) {
-    logger.warn('ws.deviceHandler', `heartbeat payload invalid for ${conn.deviceId}`);
-    return;
-  }
-  conn.lastHeartbeatAt = Date.now();
-
-  await upsertDeviceStatus('RASPBERRY_PI', true, null, 'Heartbeat');
-  if (result.data.esp32_alive !== undefined) {
-    await upsertDeviceStatus(
-      'ESP32',
-      result.data.esp32_alive,
-      null,
-      result.data.esp32_alive ? 'Reported alive by Pi heartbeat' : 'Reported offline by Pi heartbeat'
-    );
-  }
-
-  if (conn.ws.readyState === WebSocket.OPEN) {
-    const ack = {
-      v: 1 as const,
-      type: 'heartbeat_ack' as const,
-      id: randomUUID(),
-      timestamp: new Date().toISOString(),
-      payload: {},
-    };
-    try {
-      conn.ws.send(JSON.stringify(ack));
-    } catch (err) {
-      logger.error('ws.deviceHandler', `Failed to send heartbeat_ack to ${conn.deviceId}`, err);
-    }
-  }
-}
-
-async function handleSyncRequest(conn: DeviceConnection, payload: unknown): Promise<void> {
-  const result = syncRequestPayloadSchema.safeParse(payload);
-  if (!result.success) {
-    logger.warn('ws.deviceHandler', `sync_request payload invalid for ${conn.deviceId}`);
-    return;
-  }
-
-  await upsertDeviceStatus('RASPBERRY_PI', true, null, 'Resync');
-
-  const pending = await findCommandsForResync(result.data.last_command_id);
-  logger.info(
-    'ws.deviceHandler',
-    `Resync for ${conn.deviceId}: ${pending.length} commands since ${result.data.last_command_id ?? 'start'}`
-  );
-
-  for (const cmd of pending) {
-    if (conn.ws.readyState !== WebSocket.OPEN) break;
-    const sent = dispatchCommandToDevice(cmd.id, cmd.commandType, cmd.payload, cmd.createdAt);
-    if (!sent) {
-      logger.error('ws.deviceHandler', `Resync send failed for command ${cmd.id}`);
-      break;
-    }
-    await markCommandSent(cmd.id);
-  }
-}
-
-function bufferToString(raw: Buffer | ArrayBuffer | Buffer[]): string {
-  if (Buffer.isBuffer(raw)) return raw.toString('utf8');
-  if (Array.isArray(raw)) return Buffer.concat(raw).toString('utf8');
-  return Buffer.from(raw).toString('utf8');
 }
