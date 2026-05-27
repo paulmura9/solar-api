@@ -21,6 +21,12 @@ function rowToDTO(row: Record<string, unknown>): DeviceCommandDTO {
   };
 }
 
+// Outbox pattern: persist before dispatch. Audit-before-actuation is a safety
+// invariant — the ESP32 must never receive a motor command without a durable
+// audit row already committed to device_commands. The INSERT is awaited and
+// must succeed before any WebSocket frame is sent; if it fails we throw and the
+// hardware is never touched. The acceptable cost is one Supabase round-trip
+// (~30-50ms) before the dispatch.
 export async function createAndDispatchCommand(
   commandType: CommandType,
   payload: Record<string, unknown>
@@ -28,14 +34,11 @@ export async function createAndDispatchCommand(
   const id = randomUUID();
   const createdAt = new Date().toISOString();
 
-  const [insertResult, dispatched] = await Promise.all([
-    supabase
-      .from('device_commands')
-      .insert({ id, command_type: commandType, payload, status: 'PENDING', created_at: createdAt })
-      .select(COMMAND_COLUMNS)
-      .single(),
-    Promise.resolve(dispatchCommandToDevice(id, commandType, payload, createdAt)),
-  ]);
+  const insertResult = await supabase
+    .from('device_commands')
+    .insert({ id, command_type: commandType, payload, status: 'PENDING', created_at: createdAt })
+    .select(COMMAND_COLUMNS)
+    .single();
 
   if (insertResult.error || !insertResult.data) {
     throw new Error(
@@ -45,9 +48,10 @@ export async function createAndDispatchCommand(
 
   const dto = rowToDTO(insertResult.data);
 
+  const dispatched = dispatchCommandToDevice(id, commandType, payload, createdAt);
   if (dispatched) {
     const sentAt = new Date().toISOString();
-    void markCommandSent(id, sentAt);
+    await markCommandSent(id, sentAt);
     return { ...dto, status: 'SENT', sentAt };
   }
 
@@ -76,7 +80,7 @@ export async function getRecentCommands(limit: number, statusFilter?: string): P
   return (data ?? []).map((row) => rowToDTO(row as Record<string, unknown>));
 }
 
-export async function timeoutStaleCommands(): Promise<void> {
+export async function timeoutSentCommands(): Promise<void> {
   const timeoutMs = env.COMMAND_TIMEOUT_SECONDS * 1000;
   const cutoff = new Date(Date.now() - timeoutMs).toISOString();
 
@@ -113,7 +117,9 @@ export async function timeoutStaleCommands(): Promise<void> {
       message: `Command ${commandId} (${commandType}) timed out after ${env.COMMAND_TIMEOUT_SECONDS}s`,
     });
   }
+}
 
+export async function timeoutPendingCommands(): Promise<void> {
   const pendingCutoffMs = env.COMMAND_TIMEOUT_SECONDS * 5 * 1000;
   const pendingCutoff = new Date(Date.now() - pendingCutoffMs).toISOString();
 
@@ -132,6 +138,11 @@ export async function timeoutStaleCommands(): Promise<void> {
   } else if (timedOutPending && timedOutPending.length > 0) {
     logger.info('commandService', `Timed out ${timedOutPending.length} PENDING command(s) older than ${env.COMMAND_TIMEOUT_SECONDS * 5}s`);
   }
+}
+
+export async function timeoutStaleCommands(): Promise<void> {
+  await timeoutSentCommands();
+  await timeoutPendingCommands();
 }
 
 export async function markCommandSent(commandId: string, sentAt?: string): Promise<void> {
