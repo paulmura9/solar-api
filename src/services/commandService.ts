@@ -179,12 +179,14 @@ export async function markCommandSent(commandId: string, sentAt?: string): Promi
 export async function acknowledgeCommand(
   commandId: string,
   status: 'ACKNOWLEDGED' | 'FAILED',
-  errorMessage: string | null
+  errorMessage: string | null,
+  ackPayload: Record<string, unknown> | null
 ): Promise<DeviceCommandDTO | null> {
   const update: Record<string, unknown> = {
     status,
     acknowledged_at: new Date().toISOString(),
     error_message: errorMessage,
+    ack_payload: ackPayload ?? null,
   };
 
   const { data, error } = await supabase
