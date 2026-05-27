@@ -3,6 +3,7 @@ import { WebSocket } from 'ws';
 import { env } from '../config/env';
 import { logger } from '../utils/logger';
 import { clientRegistry } from './clientRegistry';
+import { incWsBroadcastError } from '../utils/metrics';
 import type { ServerOutboundEnvelope, ServerOutboundType } from './schemas';
 
 // Single-tenant broadcast: every connected client receives every telemetry,
@@ -26,6 +27,7 @@ function emit(type: ServerOutboundType, payload: object): void {
       conn.ws.send(serialized);
     } catch (err) {
       logger.error('ws.broadcaster', `Failed to send to client ${conn.userId}`, err);
+      incWsBroadcastError();
     }
   }
 }

@@ -17,6 +17,7 @@ import {
 } from './broadcaster';
 import { wsEnvelopeSchema, type WsEnvelope } from './schemas';
 import { bufferToString } from './utils';
+import { incPiReconnect } from '../utils/metrics';
 import { handleTelemetry } from './deviceHandlers/telemetry';
 import { handleCommandAck } from './deviceHandlers/commandAck';
 import { handleEsp32Event } from './deviceHandlers/esp32Event';
@@ -65,6 +66,7 @@ export function createDeviceWss(): WebSocketServer {
 
 export function registerDeviceConnection(ws: WebSocket, deviceId: string): void {
   const conn = deviceRegistry.register(ws, deviceId);
+  incPiReconnect();
   logger.info('ws.deviceHandler', `Device connected: ${deviceId}`);
 
   void upsertDeviceStatus('RASPBERRY_PI', true, null, 'WebSocket connected');
