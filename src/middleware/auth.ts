@@ -33,7 +33,8 @@ async function requireAuthImpl(req: Request, res: Response, next: NextFunction):
     }
     req.user = data.user;
     next();
-  } catch {
+  } catch (err) {
+    logger.error('auth', 'Unexpected error validating token', err);
     res.status(401).json({ error: 'Token validation failed' });
   }
 }

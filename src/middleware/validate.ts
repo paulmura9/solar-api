@@ -1,33 +1,33 @@
 import { Request, Response, NextFunction, RequestHandler } from 'express';
 import type { ZodType } from 'zod';
 
-export function validate<T>(schema: ZodType<T>): RequestHandler {
+type RequestSource = 'body' | 'query';
+
+function validateRequest<T>(schema: ZodType<T>, source: RequestSource): RequestHandler {
+  const errorMessage = source === 'body' ? 'Validation failed' : 'Invalid query parameters';
   return (req: Request, res: Response, next: NextFunction): void => {
-    const result = schema.safeParse(req.body);
+    const result = schema.safeParse(req[source]);
     if (!result.success) {
       res.status(400).json({
-        error: 'Validation failed',
+        error: errorMessage,
         details: result.error.flatten(),
       });
       return;
     }
-    req.body = result.data;
+    if (source === 'body') {
+      req.body = result.data;
+    } else {
+      // Express 4 freezes the req.query object's reference; we mutate in place.
+      Object.assign(req.query, result.data as Record<string, unknown>);
+    }
     next();
   };
 }
 
-export function validateQuery<T>(schema: ZodType<T>): RequestHandler {
-  return (req: Request, res: Response, next: NextFunction): void => {
-    const result = schema.safeParse(req.query);
-    if (!result.success) {
-      res.status(400).json({
-        error: 'Invalid query parameters',
-        details: result.error.flatten(),
-      });
-      return;
-    }
+export function validate<T>(schema: ZodType<T>): RequestHandler {
+  return validateRequest(schema, 'body');
+}
 
-    Object.assign(req.query, result.data as Record<string, unknown>);
-    next();
-  };
+export function validateQuery<T>(schema: ZodType<T>): RequestHandler {
+  return validateRequest(schema, 'query');
 }

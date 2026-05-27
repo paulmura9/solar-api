@@ -55,9 +55,9 @@ export const logger = {
   error(context: string, message: string, err?: unknown): void {
     writeLog('error', context, message, serializeErr(err));
   },
-  debug(context: string, message: string): void {
+  debug(context: string, message: string, err?: unknown): void {
     if (process.env['NODE_ENV'] !== 'production') {
-      writeLog('debug', context, message);
+      writeLog('debug', context, message, err === undefined ? undefined : serializeErr(err));
     }
   },
 };

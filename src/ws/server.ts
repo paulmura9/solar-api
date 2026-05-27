@@ -105,7 +105,8 @@ async function handleClientUpgrade(req: IncomingMessage, socket: Duplex, head: B
 function rejectUpgrade(socket: Duplex, response: string): void {
   try {
     socket.write(response);
-  } catch {
+  } catch (err) {
+    logger.debug('ws.server', 'Failed to write reject response on upgrade', err);
   }
   socket.destroy();
 }
@@ -132,7 +133,8 @@ export async function shutdownWebSocketServer(): Promise<void> {
       ws.once('close', () => resolve());
       try {
         ws.close(1001, 'server_restart');
-      } catch {
+      } catch (err) {
+        logger.debug('ws.server', 'ws.close threw during shutdown — resolving anyway', err);
         resolve();
       }
     });

@@ -76,7 +76,7 @@ export async function getRecentCommands(limit: number, statusFilter?: string): P
   return (data ?? []).map((row) => rowToDTO(row as Record<string, unknown>));
 }
 
-export async function timeoutStaleCommands(): Promise<void> {
+export async function timeoutSentCommands(): Promise<void> {
   const timeoutMs = env.COMMAND_TIMEOUT_SECONDS * 1000;
   const cutoff = new Date(Date.now() - timeoutMs).toISOString();
 
@@ -113,7 +113,9 @@ export async function timeoutStaleCommands(): Promise<void> {
       message: `Command ${commandId} (${commandType}) timed out after ${env.COMMAND_TIMEOUT_SECONDS}s`,
     });
   }
+}
 
+export async function timeoutPendingCommands(): Promise<void> {
   const pendingCutoffMs = env.COMMAND_TIMEOUT_SECONDS * 5 * 1000;
   const pendingCutoff = new Date(Date.now() - pendingCutoffMs).toISOString();
 
@@ -132,6 +134,11 @@ export async function timeoutStaleCommands(): Promise<void> {
   } else if (timedOutPending && timedOutPending.length > 0) {
     logger.info('commandService', `Timed out ${timedOutPending.length} PENDING command(s) older than ${env.COMMAND_TIMEOUT_SECONDS * 5}s`);
   }
+}
+
+export async function timeoutStaleCommands(): Promise<void> {
+  await timeoutSentCommands();
+  await timeoutPendingCommands();
 }
 
 export async function markCommandSent(commandId: string, sentAt?: string): Promise<void> {

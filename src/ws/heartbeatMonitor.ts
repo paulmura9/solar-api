@@ -34,7 +34,8 @@ function tick(): void {
       logger.warn('ws.heartbeatMonitor', `Device ${conn.deviceId} silent for ${secondsSilent}s — closing connection`);
       try {
         conn.ws.close(1001, 'heartbeat_timeout');
-      } catch {
+      } catch (err) {
+        logger.debug('ws.heartbeatMonitor', `Close after heartbeat_timeout failed for ${conn.deviceId}`, err);
       }
     }
   }

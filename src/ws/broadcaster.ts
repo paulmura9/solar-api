@@ -5,6 +5,11 @@ import { logger } from '../utils/logger';
 import { clientRegistry } from './clientRegistry';
 import type { ServerOutboundEnvelope, ServerOutboundType } from './schemas';
 
+// Single-tenant broadcast: every connected client receives every telemetry,
+// event, vision, command-status, and device-status update. This is intentional
+// because the system tracks exactly one device (env.EXPECTED_DEVICE_ID). If
+// this API ever becomes multi-tenant, emit() must filter conn.userId against
+// the owning user/device — otherwise users will see each other's data.
 function emit(type: ServerOutboundType, payload: object): void {
   const message: ServerOutboundEnvelope = {
     v: 1,

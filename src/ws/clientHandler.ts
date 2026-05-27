@@ -11,6 +11,7 @@ import {
   type ClientIncomingEnvelope,
   type ServerOutboundEnvelope,
 } from './schemas';
+import { bufferToString } from './utils';
 
 const SUBPROTOCOL_ACCESS_TOKEN = 'access_token';
 const CLOSE_CODE_IDENTITY_CHANGED = 4002;
@@ -163,15 +164,12 @@ async function handleReauth(conn: ClientConnection, payload: unknown): Promise<v
   }
 }
 
-function bufferToString(raw: Buffer | ArrayBuffer | Buffer[]): string {
-  if (Buffer.isBuffer(raw)) return raw.toString('utf8');
-  if (Array.isArray(raw)) return Buffer.concat(raw).toString('utf8');
-  return Buffer.from(raw).toString('utf8');
-}
+const CLIENT_WS_MAX_PAYLOAD_BYTES = 1_000_000;
 
 export function createClientWss(): WebSocketServer {
   return new WebSocketServer({
     noServer: true,
+    maxPayload: CLIENT_WS_MAX_PAYLOAD_BYTES,
     handleProtocols: (protocols) => {
 
       if (protocols.has(SUBPROTOCOL_ACCESS_TOKEN)) return SUBPROTOCOL_ACCESS_TOKEN;

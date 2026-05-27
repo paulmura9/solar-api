@@ -1,5 +1,6 @@
 import './config/env';
 import http from 'node:http';
+import type { ScheduledTask } from 'node-cron';
 import app from './app';
 import { env } from './config/env';
 import { startCommandTimeoutJob } from './jobs/commandTimeoutJob';
@@ -23,9 +24,11 @@ const httpServer = http.createServer(app);
 
 attachWebSocketServer(httpServer);
 
-startCommandTimeoutJob();
-startDeviceOfflineJob();
-startSunScheduleJob();
+const scheduledJobs: ScheduledTask[] = [
+  startCommandTimeoutJob(),
+  startDeviceOfflineJob(),
+  startSunScheduleJob(),
+];
 
 httpServer.listen(env.PORT, '0.0.0.0', () => {
   logger.info('server', `LightTrack API listening on port ${env.PORT} [${env.NODE_ENV}] (HTTP + WS)`);
@@ -41,6 +44,14 @@ async function gracefulShutdown(signal: string): Promise<void> {
   if (shuttingDown) return;
   shuttingDown = true;
   logger.info('server', `Received ${signal} — beginning graceful shutdown`);
+
+  for (const job of scheduledJobs) {
+    try {
+      job.stop();
+    } catch (err) {
+      logger.error('server', 'Error stopping scheduled job', err);
+    }
+  }
 
   try {
     await shutdownWebSocketServer();

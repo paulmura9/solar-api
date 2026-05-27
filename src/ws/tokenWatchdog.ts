@@ -33,7 +33,8 @@ function tick(): void {
       logger.info('ws.tokenWatchdog', `Forcing disconnect of stale-token client ${conn.userId}`);
       try {
         conn.ws.close(CLOSE_CODE_REAUTH_REQUIRED, 'reauth_required');
-      } catch {
+      } catch (err) {
+        logger.debug('ws.tokenWatchdog', `Close after reauth_required failed for ${conn.userId}`, err);
       }
     }
   }

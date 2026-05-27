@@ -1,9 +1,9 @@
-import cron from 'node-cron';
+import cron, { type ScheduledTask } from 'node-cron';
 import { fetchAndCacheSunSchedule } from '../services/openMeteo';
 import { logger } from '../utils/logger';
 
-export function startSunScheduleJob(): void {
-  cron.schedule('0 5 * * *', () => {
+export function startSunScheduleJob(): ScheduledTask {
+  const task = cron.schedule('0 5 * * *', () => {
     logger.info('sunScheduleJob', 'Running daily sun schedule fetch');
     void fetchAndCacheSunSchedule()
       .then(() => logger.info('sunScheduleJob', 'Sun schedule updated successfully'))
@@ -13,4 +13,5 @@ export function startSunScheduleJob(): void {
   });
 
   logger.info('sunScheduleJob', 'Scheduled — runs daily at 05:00');
+  return task;
 }
