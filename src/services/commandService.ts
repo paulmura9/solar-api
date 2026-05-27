@@ -129,6 +129,14 @@ export async function timeoutSentCommands(): Promise<void> {
   }
 }
 
+// Marks PENDING commands older than 5x COMMAND_TIMEOUT_SECONDS as FAILED.
+// This is intentional and these commands are NOT replayed on Pi reconnect.
+// A motor command has short temporal validity: replaying a minutes-old
+// "move to X" after the Pi reconnects is unsafe, because the panel may have
+// been moved manually in the meantime, or the user may have issued newer
+// commands. Stale commands expire rather than resurrect. handleSyncRequest
+// only resends rows still in PENDING/SENT, so once a command is FAILED here it
+// is permanently out of the resync set.
 export async function timeoutPendingCommands(): Promise<void> {
   const pendingCutoffMs = env.COMMAND_TIMEOUT_SECONDS * 5 * 1000;
   const pendingCutoff = new Date(Date.now() - pendingCutoffMs).toISOString();
