@@ -4,6 +4,7 @@ import { logger } from '../utils/logger';
 import { insertEvent } from './eventService';
 import { env } from '../config/env';
 import { dispatchCommandToDevice } from '../ws/commandDispatch';
+import { broadcastCommandStatus } from '../ws/broadcaster';
 import type { DeviceCommandDTO, CommandType, CommandStatus } from '../types/command';
 
 const COMMAND_COLUMNS = 'id, command_type, payload, status, error_message, created_at, sent_at, acknowledged_at';
@@ -95,13 +96,15 @@ export async function timeoutSentCommands(): Promise<void> {
     return;
   }
 
+  const errorMessage = 'Command acknowledgment timeout';
+
   for (const row of data ?? []) {
     const commandId = row.id as string;
     const commandType = row.command_type as string;
 
     const { error: updateError } = await supabase
       .from('device_commands')
-      .update({ status: 'FAILED', error_message: 'Command acknowledgment timeout' })
+      .update({ status: 'FAILED', error_message: errorMessage })
       .eq('id', commandId);
 
     if (updateError) {
@@ -110,6 +113,13 @@ export async function timeoutSentCommands(): Promise<void> {
     }
 
     logger.warn('commandService', `Command ${commandId} (${commandType}) timed out after ${env.COMMAND_TIMEOUT_SECONDS}s`);
+
+    broadcastCommandStatus({
+      id: commandId,
+      status: 'FAILED',
+      error_message: errorMessage,
+      acknowledged_at: null,
+    });
 
     await insertEvent({
       event_type: 'COMMAND_TIMEOUT',
@@ -122,12 +132,13 @@ export async function timeoutSentCommands(): Promise<void> {
 export async function timeoutPendingCommands(): Promise<void> {
   const pendingCutoffMs = env.COMMAND_TIMEOUT_SECONDS * 5 * 1000;
   const pendingCutoff = new Date(Date.now() - pendingCutoffMs).toISOString();
+  const errorMessage = 'Command never picked up by gateway (Pi offline or disconnected)';
 
   const { data: timedOutPending, error: pendingError } = await supabase
     .from('device_commands')
     .update({
       status: 'FAILED',
-      error_message: 'Command never picked up by gateway (Pi offline or disconnected)',
+      error_message: errorMessage,
     })
     .eq('status', 'PENDING')
     .lt('created_at', pendingCutoff)
@@ -137,6 +148,14 @@ export async function timeoutPendingCommands(): Promise<void> {
     logger.error('commandService', 'Failed to timeout PENDING commands', pendingError);
   } else if (timedOutPending && timedOutPending.length > 0) {
     logger.info('commandService', `Timed out ${timedOutPending.length} PENDING command(s) older than ${env.COMMAND_TIMEOUT_SECONDS * 5}s`);
+    for (const row of timedOutPending) {
+      broadcastCommandStatus({
+        id: row.id as string,
+        status: 'FAILED',
+        error_message: errorMessage,
+        acknowledged_at: null,
+      });
+    }
   }
 }
 
