@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { supabase } from '../config/supabase';
 import { logger } from '../utils/logger';
 import { HttpError } from '../utils/httpError';
+import { MS_PER_HOUR } from '../utils/constants';
 
 interface ReadingResponse {
   id: number;
@@ -123,9 +124,10 @@ export async function getReadingHistory(req: Request, res: Response): Promise<vo
   });
 }
 
+// unused — removal candidate
 export async function getReadingStats(req: Request, res: Response): Promise<void> {
   const hours = Number(req.query['hours'] ?? 24);
-  const since = new Date(Date.now() - hours * 3_600_000).toISOString();
+  const since = new Date(Date.now() - hours * MS_PER_HOUR).toISOString();
 
   const { data, error } = await supabase
     .from('sensor_readings')

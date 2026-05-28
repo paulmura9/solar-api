@@ -3,6 +3,19 @@ import { logger } from '../utils/logger';
 import { insertEvent } from './eventService';
 import type { DeviceStatusDTO, DeviceName } from '../types/device';
 import { env } from '../config/env';
+import { EVENT_TYPES } from '../utils/constants';
+
+const DEVICE_COLUMNS = 'id, device_name, is_online, last_seen, firmware_version, status_message, updated_at';
+
+type OfflineEventType =
+  | typeof EVENT_TYPES.ESP32_OFFLINE
+  | typeof EVENT_TYPES.RASPBERRY_PI_OFFLINE
+  | typeof EVENT_TYPES.DEVICE_OFFLINE;
+
+const OFFLINE_EVENT_BY_DEVICE: Record<string, OfflineEventType> = {
+  ESP32: EVENT_TYPES.ESP32_OFFLINE,
+  RASPBERRY_PI: EVENT_TYPES.RASPBERRY_PI_OFFLINE,
+};
 
 export async function upsertDeviceStatus(
   deviceName: DeviceName,
@@ -30,7 +43,7 @@ export async function upsertDeviceStatus(
 export async function getAllDevices(): Promise<DeviceStatusDTO[]> {
   const { data, error } = await supabase
     .from('device_status')
-    .select('id, device_name, is_online, last_seen, firmware_version, status_message, updated_at')
+    .select(DEVICE_COLUMNS)
     .order('device_name');
 
   if (error) {
@@ -52,7 +65,7 @@ export async function getAllDevices(): Promise<DeviceStatusDTO[]> {
 export async function getDeviceByName(deviceName: DeviceName): Promise<DeviceStatusDTO | null> {
   const { data, error } = await supabase
     .from('device_status')
-    .select('id, device_name, is_online, last_seen, firmware_version, status_message, updated_at')
+    .select(DEVICE_COLUMNS)
     .eq('device_name', deviceName)
     .maybeSingle();
 
@@ -103,11 +116,7 @@ export async function markStaleDevicesOffline(): Promise<void> {
 
     logger.warn('deviceService', `${deviceName} marked offline (no heartbeat for ${env.DEVICE_OFFLINE_AFTER_SECONDS}s)`);
 
-    const eventType = deviceName === 'ESP32'
-      ? 'ESP32_OFFLINE'
-      : deviceName === 'RASPBERRY_PI'
-      ? 'RASPBERRY_PI_OFFLINE'
-      : 'DEVICE_OFFLINE';
+    const eventType = OFFLINE_EVENT_BY_DEVICE[deviceName] ?? EVENT_TYPES.DEVICE_OFFLINE;
 
     await insertEvent({
       event_type: eventType,

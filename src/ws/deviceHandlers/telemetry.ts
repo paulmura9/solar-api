@@ -4,12 +4,13 @@ import { upsertDeviceStatus } from '../../services/deviceService';
 import { broadcastTelemetry } from '../broadcaster';
 import { telemetryPayloadSchema } from '../schemas';
 import { parseOr } from '../utils';
+import { EVENT_TYPES } from '../../utils/constants';
 
 export async function handleTelemetry(payload: unknown): Promise<void> {
   const parsed = parseOr(telemetryPayloadSchema, payload, 'telemetry');
   if (!parsed.ok) {
     await insertEvent({
-      event_type: 'SENSOR_ERROR',
+      event_type: EVENT_TYPES.SENSOR_ERROR,
       severity: 'WARNING',
       message: `Invalid telemetry payload: ${parsed.reason}`,
     });

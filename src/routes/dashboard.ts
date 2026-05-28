@@ -1,3 +1,4 @@
+// unused — removal candidate
 import { Router } from 'express';
 import { requireAuth } from '../middleware/auth';
 import { asyncHandler } from '../utils/asyncHandler';

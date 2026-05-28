@@ -1,6 +1,7 @@
 import { env } from '../config/env';
 import { logger } from '../utils/logger';
 import { deviceRegistry } from './deviceRegistry';
+import { WS_CLOSE_CODES } from '../utils/constants';
 
 let intervalId: NodeJS.Timeout | null = null;
 
@@ -33,7 +34,7 @@ function tick(): void {
       const secondsSilent = Math.round((now - conn.lastHeartbeatAt) / 1000);
       logger.warn('ws.heartbeatMonitor', `Device ${conn.deviceId} silent for ${secondsSilent}s — closing connection`);
       try {
-        conn.ws.close(1001, 'heartbeat_timeout');
+        conn.ws.close(WS_CLOSE_CODES.GOING_AWAY, 'heartbeat_timeout');
       } catch (err) {
         logger.debug('ws.heartbeatMonitor', `Close after heartbeat_timeout failed for ${conn.deviceId}`, err);
       }

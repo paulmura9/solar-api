@@ -1,9 +1,10 @@
 import { supabase } from '../config/supabase';
 import { logger } from '../utils/logger';
+import { MS_PER_DAY } from '../utils/constants';
 import type { EnergySummaryDTO, DirtImpactDTO } from '../types/energy';
 
 export async function getEnergySummary(days: number): Promise<EnergySummaryDTO> {
-  const since = new Date(Date.now() - days * 86_400_000).toISOString();
+  const since = new Date(Date.now() - days * MS_PER_DAY).toISOString();
 
   const { data, error } = await supabase
     .from('sensor_readings')
@@ -52,7 +53,7 @@ export async function getEnergySummary(days: number): Promise<EnergySummaryDTO> 
 }
 
 export async function getDirtImpact(days: number): Promise<DirtImpactDTO> {
-  const since = new Date(Date.now() - days * 86_400_000).toISOString();
+  const since = new Date(Date.now() - days * MS_PER_DAY).toISOString();
 
   const { data, error } = await supabase
     .from('vision_results')

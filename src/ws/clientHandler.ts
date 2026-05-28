@@ -12,10 +12,9 @@ import {
   type ServerOutboundEnvelope,
 } from './schemas';
 import { bufferToString } from './utils';
+import { WS_CLOSE_CODES, WS_MAX_PAYLOAD_BYTES } from '../utils/constants';
 
 const SUBPROTOCOL_ACCESS_TOKEN = 'access_token';
-const CLOSE_CODE_IDENTITY_CHANGED = 4002;
-const CLOSE_CODE_REAUTH_FAILED = 4003;
 
 type ClientAuthResult =
   | { ok: true; userId: string; userEmail: string }
@@ -126,7 +125,7 @@ async function handleReauth(conn: ClientConnection, payload: unknown): Promise<v
   const payloadResult = clientReauthPayloadSchema.safeParse(payload);
   if (!payloadResult.success) {
     logger.warn('ws.clientHandler', `reauth payload invalid from user=${conn.userId}`);
-    conn.ws.close(CLOSE_CODE_REAUTH_FAILED, 'reauth_failed');
+    conn.ws.close(WS_CLOSE_CODES.REAUTH_FAILED, 'reauth_failed');
     return;
   }
   const { token } = payloadResult.data;
@@ -135,7 +134,7 @@ async function handleReauth(conn: ClientConnection, payload: unknown): Promise<v
     const { data, error } = await supabase.auth.getUser(token);
     if (error || !data.user) {
       logger.warn('ws.clientHandler', `Reauth failed for user=${conn.userId}`);
-      conn.ws.close(CLOSE_CODE_REAUTH_FAILED, 'reauth_failed');
+      conn.ws.close(WS_CLOSE_CODES.REAUTH_FAILED, 'reauth_failed');
       return;
     }
 
@@ -145,7 +144,7 @@ async function handleReauth(conn: ClientConnection, payload: unknown): Promise<v
         'ws.clientHandler',
         `Reauth identity mismatch: connection=${conn.userId} token=${data.user.id}`
       );
-      conn.ws.close(CLOSE_CODE_IDENTITY_CHANGED, 'identity_changed');
+      conn.ws.close(WS_CLOSE_CODES.IDENTITY_CHANGED, 'identity_changed');
       return;
     }
 
@@ -160,16 +159,14 @@ async function handleReauth(conn: ClientConnection, payload: unknown): Promise<v
     conn.ws.send(JSON.stringify(ack));
   } catch (err) {
     logger.error('ws.clientHandler', `Reauth unexpected error for user=${conn.userId}`, err);
-    conn.ws.close(CLOSE_CODE_REAUTH_FAILED, 'reauth_failed');
+    conn.ws.close(WS_CLOSE_CODES.REAUTH_FAILED, 'reauth_failed');
   }
 }
-
-const CLIENT_WS_MAX_PAYLOAD_BYTES = 1_000_000;
 
 export function createClientWss(): WebSocketServer {
   return new WebSocketServer({
     noServer: true,
-    maxPayload: CLIENT_WS_MAX_PAYLOAD_BYTES,
+    maxPayload: WS_MAX_PAYLOAD_BYTES,
     handleProtocols: (protocols) => {
 
       if (protocols.has(SUBPROTOCOL_ACCESS_TOKEN)) return SUBPROTOCOL_ACCESS_TOKEN;

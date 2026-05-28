@@ -37,7 +37,7 @@ const pendingOnlineAnnouncements = new Map<string, NodeJS.Timeout>();
 export function scheduleDeviceOnlineBroadcast(deviceId: string, deviceName: string): void {
   const existing = pendingOnlineAnnouncements.get(deviceId);
   if (existing) {
-
+    // Coalesce reconnect bursts: an announcement is already pending within the grace window.
     return;
   }
 

@@ -1,5 +1,6 @@
 import { supabase } from '../config/supabase';
 import { logger } from '../utils/logger';
+import { SERVICE_NAME } from '../utils/constants';
 import type { DeepHealthResponse } from '../types/health';
 
 export async function checkSupabaseHealth(): Promise<'ok' | 'error'> {
@@ -18,7 +19,7 @@ export async function getDeepHealth(): Promise<DeepHealthResponse> {
 
   return {
     status: overall,
-    service: 'lighttrack-api',
+    service: SERVICE_NAME,
     supabase: supabaseStatus,
     timestamp: new Date().toISOString(),
   };

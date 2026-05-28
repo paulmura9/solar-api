@@ -5,7 +5,6 @@ import app from './app';
 import { env } from './config/env';
 import { startCommandTimeoutJob } from './jobs/commandTimeoutJob';
 import { startDeviceOfflineJob } from './jobs/deviceOfflineJob';
-import { startSunScheduleJob } from './jobs/sunScheduleJob';
 import { timeoutStaleCommands } from './services/commandService';
 import { attachWebSocketServer, shutdownWebSocketServer } from './ws/server';
 import { logger } from './utils/logger';
@@ -27,7 +26,6 @@ attachWebSocketServer(httpServer);
 const scheduledJobs: ScheduledTask[] = [
   startCommandTimeoutJob(),
   startDeviceOfflineJob(),
-  startSunScheduleJob(),
 ];
 
 httpServer.listen(env.PORT, '0.0.0.0', () => {

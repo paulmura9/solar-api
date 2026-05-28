@@ -1,10 +1,9 @@
 import { env } from '../config/env';
 import { logger } from '../utils/logger';
 import { clientRegistry } from './clientRegistry';
+import { WS_CLOSE_CODES } from '../utils/constants';
 
 let intervalId: NodeJS.Timeout | null = null;
-
-const CLOSE_CODE_REAUTH_REQUIRED = 4001;
 
 export function startClientTokenWatchdog(): void {
   if (intervalId !== null) return;
@@ -32,7 +31,7 @@ function tick(): void {
     if (conn.lastReauthAt < cutoff) {
       logger.info('ws.tokenWatchdog', `Forcing disconnect of stale-token client ${conn.userId}`);
       try {
-        conn.ws.close(CLOSE_CODE_REAUTH_REQUIRED, 'reauth_required');
+        conn.ws.close(WS_CLOSE_CODES.REAUTH_REQUIRED, 'reauth_required');
       } catch (err) {
         logger.debug('ws.tokenWatchdog', `Close after reauth_required failed for ${conn.userId}`, err);
       }

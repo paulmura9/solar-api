@@ -3,6 +3,7 @@ import { insertVisionResult } from '../../services/visionService';
 import { broadcastVision } from '../broadcaster';
 import { visionResultPayloadSchema } from '../schemas';
 import { parseOr } from '../utils';
+import { EVENT_TYPES } from '../../utils/constants';
 
 export async function handleVisionResult(payload: unknown): Promise<void> {
   const parsed = parseOr(visionResultPayloadSchema, payload, 'vision_result');
@@ -14,7 +15,7 @@ export async function handleVisionResult(payload: unknown): Promise<void> {
   broadcastVision(inserted);
   if (inserted.cleaningRequired) {
     await insertEvent({
-      event_type: 'CLEANING_REQUIRED',
+      event_type: EVENT_TYPES.CLEANING_REQUIRED,
       severity: 'WARNING',
       message: `Vision pipeline flagged cleaning required (dirt=${inserted.dirtLevelPercent}%)`,
     });

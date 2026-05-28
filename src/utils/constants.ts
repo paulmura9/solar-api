@@ -28,7 +28,33 @@ export const HISTORY_MAX_LIMIT = 1000;
 export const EVENTS_DEFAULT_LIMIT = 20;
 export const EVENTS_MAX_LIMIT = 100;
 export const VISION_DEFAULT_LIMIT = 50;
+export const COMMANDS_DEFAULT_LIMIT = 10;
+export const COMMANDS_MAX_LIMIT = 100;
 
-export const OPEN_METEO_BASE_URL = 'https://api.open-meteo.com/v1/forecast';
-export const OPEN_METEO_TIMEZONE = 'Europe/Bucharest';
-export const OPEN_METEO_FORECAST_DAYS = 7;
+export const MS_PER_HOUR = 3_600_000;
+export const MS_PER_DAY = 86_400_000;
+
+export const WS_MAX_PAYLOAD_BYTES = 1_000_000;
+
+export const WS_CLOSE_CODES = {
+  NORMAL: 1000,
+  GOING_AWAY: 1001,
+  POLICY_VIOLATION: 1008,
+  REAUTH_REQUIRED: 4001,
+  IDENTITY_CHANGED: 4002,
+  REAUTH_FAILED: 4003,
+} as const;
+
+export const DEVICE_ID_PATTERN = /^[a-z0-9-]{3,64}$/;
+
+export const EVENT_TYPES = {
+  COMMAND_TIMEOUT: 'COMMAND_TIMEOUT',
+  COMMAND_FAILED: 'COMMAND_FAILED',
+  CLEANING_REQUIRED: 'CLEANING_REQUIRED',
+  SENSOR_ERROR: 'SENSOR_ERROR',
+  RASPBERRY_PI_OFFLINE: 'RASPBERRY_PI_OFFLINE',
+  ESP32_OFFLINE: 'ESP32_OFFLINE',
+  DEVICE_OFFLINE: 'DEVICE_OFFLINE',
+} as const;
+
+export const SERVICE_NAME = 'lighttrack-api';

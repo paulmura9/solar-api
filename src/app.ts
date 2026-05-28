@@ -13,7 +13,6 @@ import commandsRouter from './routes/commands';
 import visionRouter from './routes/vision';
 import eventsRouter from './routes/events';
 import devicesRouter from './routes/devices';
-import sunRouter from './routes/sun';
 import energyRouter from './routes/energy';
 import healthRouter from './routes/health';
 import dashboardRouter from './routes/dashboard';
@@ -64,7 +63,6 @@ app.use('/api/commands', commandsRouter);
 app.use('/api/vision', visionRouter);
 app.use('/api/events', eventsRouter);
 app.use('/api/devices', devicesRouter);
-app.use('/api/sun', sunRouter);
 app.use('/api/energy', energyRouter);
 app.use('/api/dashboard', dashboardRouter);
 

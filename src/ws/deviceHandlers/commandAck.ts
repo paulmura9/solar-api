@@ -3,6 +3,7 @@ import { insertEvent } from '../../services/eventService';
 import { broadcastCommandStatus } from '../broadcaster';
 import { commandAckPayloadSchema } from '../schemas';
 import { parseOr } from '../utils';
+import { EVENT_TYPES } from '../../utils/constants';
 
 export async function handleCommandAck(payload: unknown): Promise<void> {
   const parsed = parseOr(commandAckPayloadSchema, payload, 'command_ack');
@@ -22,7 +23,7 @@ export async function handleCommandAck(payload: unknown): Promise<void> {
 
   if (status === 'FAILED') {
     await insertEvent({
-      event_type: 'COMMAND_FAILED',
+      event_type: EVENT_TYPES.COMMAND_FAILED,
       severity: 'ERROR',
       message: `Command ${commandId} failed: ${errorMsg ?? 'no detail'}`,
     });

@@ -1,3 +1,4 @@
+// unused — removal candidate
 import { Request, Response } from 'express';
 import { getEnergySummary, getDirtImpact } from '../services/energyCalc';
 

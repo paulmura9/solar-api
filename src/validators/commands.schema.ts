@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { COMMAND_STATUSES } from '../utils/constants';
+import { COMMAND_STATUSES, COMMANDS_DEFAULT_LIMIT, COMMANDS_MAX_LIMIT } from '../utils/constants';
 
 const servoAngle = z.number().int().min(5).max(175);
 
@@ -35,7 +35,7 @@ export const createCommandSchema = z.discriminatedUnion('command_type', [
 ]);
 
 export const commandQuerySchema = z.object({
-  limit: z.coerce.number().int().min(1).max(100).default(10),
+  limit: z.coerce.number().int().min(1).max(COMMANDS_MAX_LIMIT).default(COMMANDS_DEFAULT_LIMIT),
   status: z.string().optional().refine(
     (val) => {
       if (val === undefined) return true;

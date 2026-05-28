@@ -1,11 +1,10 @@
 import { z } from 'zod';
 import dotenv from 'dotenv';
+import { DEVICE_ID_PATTERN } from '../utils/constants';
 
 dotenv.config();
 
 const MIN_DEVICE_API_KEY_LENGTH = 32;
-
-const DEVICE_ID_PATTERN = /^[a-z0-9-]{3,64}$/;
 
 const envSchema = z.object({
   PORT: z.coerce.number().int().positive().default(3001),

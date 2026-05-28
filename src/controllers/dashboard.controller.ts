@@ -1,3 +1,4 @@
+// unused — removal candidate
 import { Request, Response } from 'express';
 import { supabase } from '../config/supabase';
 import { logger } from '../utils/logger';

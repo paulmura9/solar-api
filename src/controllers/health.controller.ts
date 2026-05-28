@@ -1,12 +1,13 @@
 import { Request, Response } from 'express';
 import { getDeepHealth, checkSupabaseHealth } from '../services/healthService';
 import { wsCounts } from '../ws/server';
+import { SERVICE_NAME } from '../utils/constants';
 
 export function getHealth(_req: Request, res: Response): void {
   const counts = wsCounts();
   res.json({
     status: 'ok',
-    service: 'lighttrack-api',
+    service: SERVICE_NAME,
     timestamp: new Date().toISOString(),
     ws: {
       devices_connected: counts.devices,

@@ -18,6 +18,12 @@ import {
 import { wsEnvelopeSchema, type WsEnvelope } from './schemas';
 import { bufferToString } from './utils';
 import { incPiReconnect } from '../utils/metrics';
+import {
+  DEVICE_ID_PATTERN,
+  EVENT_TYPES,
+  WS_CLOSE_CODES,
+  WS_MAX_PAYLOAD_BYTES,
+} from '../utils/constants';
 import { handleTelemetry } from './deviceHandlers/telemetry';
 import { handleCommandAck } from './deviceHandlers/commandAck';
 import { handleEsp32Event } from './deviceHandlers/esp32Event';
@@ -28,7 +34,6 @@ import { handleSyncRequest } from './deviceHandlers/syncRequest';
 type DeviceAuthResult = { ok: true; deviceId: string } | { ok: false; reason: string };
 
 const DEVICE_KEY_BUFFER: Buffer = Buffer.from(env.DEVICE_API_KEY, 'utf8');
-const DEVICE_ID_REGEX = /^[a-z0-9-]{3,64}$/;
 
 export function authenticateDeviceUpgrade(req: IncomingMessage): DeviceAuthResult {
   const headerKey = req.headers['x-device-key'];
@@ -47,7 +52,7 @@ export function authenticateDeviceUpgrade(req: IncomingMessage): DeviceAuthResul
     return { ok: false, reason: 'invalid_key' };
   }
 
-  if (!DEVICE_ID_REGEX.test(headerId)) {
+  if (!DEVICE_ID_PATTERN.test(headerId)) {
     return { ok: false, reason: 'invalid_device_id' };
   }
 
@@ -58,10 +63,8 @@ export function authenticateDeviceUpgrade(req: IncomingMessage): DeviceAuthResul
   return { ok: true, deviceId: headerId };
 }
 
-const DEVICE_WS_MAX_PAYLOAD_BYTES = 1_000_000;
-
 export function createDeviceWss(): WebSocketServer {
-  return new WebSocketServer({ noServer: true, maxPayload: DEVICE_WS_MAX_PAYLOAD_BYTES });
+  return new WebSocketServer({ noServer: true, maxPayload: WS_MAX_PAYLOAD_BYTES });
 }
 
 export function registerDeviceConnection(ws: WebSocket, deviceId: string): void {
@@ -100,7 +103,7 @@ export function registerDeviceConnection(ws: WebSocket, deviceId: string): void 
 async function onDeviceDisconnected(deviceId: string, reason: string): Promise<void> {
   await upsertDeviceStatus('RASPBERRY_PI', false, null, `WebSocket closed: ${reason}`);
   await insertEvent({
-    event_type: 'RASPBERRY_PI_OFFLINE',
+    event_type: EVENT_TYPES.RASPBERRY_PI_OFFLINE,
     severity: 'WARNING',
     message: `Pi disconnected (${reason})`,
   });
@@ -142,7 +145,7 @@ async function handleDeviceMessage(
   if (!checkRateLimit(conn.rateLimit)) {
     logger.warn('ws.deviceHandler', `Rate limit exceeded for ${conn.deviceId} — closing`);
     try {
-      conn.ws.close(1008, 'rate_limit');
+      conn.ws.close(WS_CLOSE_CODES.POLICY_VIOLATION, 'rate_limit');
     } catch (err) {
       logger.debug('ws.deviceHandler', `Close after rate_limit failed for ${conn.deviceId}`, err);
     }

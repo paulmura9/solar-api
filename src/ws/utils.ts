@@ -7,7 +7,7 @@ export function bufferToString(raw: Buffer | ArrayBuffer | Buffer[]): string {
   return Buffer.from(raw).toString('utf8');
 }
 
-export type ParseResult<T> = { ok: true; data: T } | { ok: false; reason: string };
+type ParseResult<T> = { ok: true; data: T } | { ok: false; reason: string };
 
 export function parseOr<T>(
   schema: ZodSchema<T>,

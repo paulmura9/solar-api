@@ -6,6 +6,7 @@ import { env } from '../config/env';
 import { dispatchCommandToDevice } from '../ws/commandDispatch';
 import { broadcastCommandStatus } from '../ws/broadcaster';
 import { incCommandAcknowledged, incCommandFailed } from '../utils/metrics';
+import { EVENT_TYPES } from '../utils/constants';
 import type { DeviceCommandDTO, CommandType, CommandStatus } from '../types/command';
 
 const COMMAND_COLUMNS = 'id, command_type, payload, status, error_message, created_at, sent_at, acknowledged_at';
@@ -63,7 +64,7 @@ export async function createAndDispatchCommand(
 export async function getRecentCommands(limit: number, statusFilter?: string): Promise<DeviceCommandDTO[]> {
   let query = supabase
     .from('device_commands')
-    .select('id, command_type, payload, status, error_message, created_at, sent_at, acknowledged_at')
+    .select(COMMAND_COLUMNS)
     .order('created_at', { ascending: false })
     .limit(limit);
 
@@ -125,7 +126,7 @@ export async function timeoutSentCommands(): Promise<void> {
     });
 
     await insertEvent({
-      event_type: 'COMMAND_TIMEOUT',
+      event_type: EVENT_TYPES.COMMAND_TIMEOUT,
       severity: 'WARNING',
       message: `Command ${commandId} (${commandType}) timed out after ${env.COMMAND_TIMEOUT_SECONDS}s`,
     });

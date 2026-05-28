@@ -13,6 +13,7 @@ router.use(requireAuth);
 
 router.get('/latest', withCacheHeaders(cachePolicy.readingsLatest), asyncHandler(getLatestReading));
 router.get('/history', withCacheHeaders(cachePolicy.readingsHistory), validateQuery(readingHistoryQuerySchema), asyncHandler(getReadingHistory));
+// unused — removal candidate
 router.get('/stats', validateQuery(readingStatsQuerySchema), asyncHandler(getReadingStats));
 
 export default router;

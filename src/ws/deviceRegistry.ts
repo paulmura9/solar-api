@@ -1,6 +1,7 @@
 import type { WebSocket } from 'ws';
 import { logger } from '../utils/logger';
 import { createRateLimitState, type RateLimitState } from './rateLimit';
+import { WS_CLOSE_CODES } from '../utils/constants';
 
 export interface DeviceConnection {
   ws: WebSocket;
@@ -22,8 +23,10 @@ class DeviceConnectionRegistry {
 
       logger.info('ws.deviceRegistry', `Replacing existing connection for ${deviceId}`);
       try {
-        existing.ws.close(1000, 'replaced');
+        existing.ws.close(WS_CLOSE_CODES.NORMAL, 'replaced');
       } catch {
+        // Best-effort close on a stale socket; failure here is harmless because
+        // we are about to replace the registry entry with the new connection.
       }
     }
 

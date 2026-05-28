@@ -1,12 +1,12 @@
 import { COMMAND_TYPES } from './constants';
 
-export type CommandFailureReason =
+type CommandFailureReason =
   | 'dispatch_failed'
   | 'timeout_pending'
   | 'timeout_sent'
   | 'validation_error';
 
-export interface CommandMetricsSnapshot {
+interface CommandMetricsSnapshot {
   commands_dispatched_total: Record<string, number>;
   commands_failed_total: Record<CommandFailureReason, number>;
   commands_acknowledged_total: number;

@@ -23,6 +23,7 @@ import {
   clearAllPendingAnnouncements,
   notifyAllClientsShuttingDown,
 } from './broadcaster';
+import { WS_CLOSE_CODES } from '../utils/constants';
 
 const PATH_DEVICE = '/ws/device';
 const PATH_CLIENT = '/ws/client';
@@ -132,7 +133,7 @@ export async function shutdownWebSocketServer(): Promise<void> {
       }
       ws.once('close', () => resolve());
       try {
-        ws.close(1001, 'server_restart');
+        ws.close(WS_CLOSE_CODES.GOING_AWAY, 'server_restart');
       } catch (err) {
         logger.debug('ws.server', 'ws.close threw during shutdown — resolving anyway', err);
         resolve();
