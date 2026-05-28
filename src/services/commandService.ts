@@ -83,7 +83,7 @@ export async function getRecentCommands(limit: number, statusFilter?: string): P
   return (data ?? []).map((row) => rowToDTO(row as Record<string, unknown>));
 }
 
-export async function timeoutSentCommands(): Promise<void> {
+async function timeoutSentCommands(): Promise<void> {
   const timeoutMs = env.COMMAND_TIMEOUT_SECONDS * 1000;
   const cutoff = new Date(Date.now() - timeoutMs).toISOString();
 
@@ -141,7 +141,7 @@ export async function timeoutSentCommands(): Promise<void> {
 // commands. Stale commands expire rather than resurrect. handleSyncRequest
 // only resends rows still in PENDING/SENT, so once a command is FAILED here it
 // is permanently out of the resync set.
-export async function timeoutPendingCommands(): Promise<void> {
+async function timeoutPendingCommands(): Promise<void> {
   const pendingCutoffMs = env.COMMAND_TIMEOUT_SECONDS * 5 * 1000;
   const pendingCutoff = new Date(Date.now() - pendingCutoffMs).toISOString();
   const errorMessage = 'Command never picked up by gateway (Pi offline or disconnected)';

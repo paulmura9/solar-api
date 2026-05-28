@@ -155,16 +155,14 @@ export const clientIncomingEnvelopeSchema = z
 
 export type ClientIncomingEnvelope = z.infer<typeof clientIncomingEnvelopeSchema>;
 
-export const SERVER_OUTBOUND_TYPES = [
-  'telemetry_update',
-  'event',
-  'vision_update',
-  'command_status_update',
-  'device_status_update',
-  'server_shutting_down',
-  'reauth_ok',
-] as const;
-export type ServerOutboundType = (typeof SERVER_OUTBOUND_TYPES)[number];
+export type ServerOutboundType =
+  | 'telemetry_update'
+  | 'event'
+  | 'vision_update'
+  | 'command_status_update'
+  | 'device_status_update'
+  | 'server_shutting_down'
+  | 'reauth_ok';
 
 export interface ServerOutboundEnvelope {
   v: 1;
