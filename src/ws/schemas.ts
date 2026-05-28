@@ -53,7 +53,7 @@ export const telemetryPayloadSchema = z
     horizontal_light_difference: z.number().finite().nullable().optional(),
     vertical_light_difference: z.number().finite().nullable().optional(),
 
-    battery_voltage: z.number().min(BATTERY_VOLTAGE_MIN).max(BATTERY_VOLTAGE_MAX),
+    battery_voltage: z.number().min(BATTERY_VOLTAGE_MIN).max(BATTERY_VOLTAGE_MAX).nullable().optional(),
     battery_percent: z.number().min(BATTERY_PERCENT_MIN).max(BATTERY_PERCENT_MAX).nullable().optional(),
     battery_status: z.enum(BATTERY_STATUSES).nullable().optional(),
 
