@@ -2,7 +2,7 @@ export const TRACKING_MODES = ['AUTO', 'MANUAL', 'NIGHT', 'IDLE', 'ERROR'] as co
 export const BATTERY_STATUSES = ['CHARGING', 'DISCHARGING', 'NORMAL', 'FULL', 'LOW', 'CRITICAL', 'IDLE', 'UNKNOWN'] as const;
 export const COMMAND_STATUSES = ['PENDING', 'SENT', 'ACKNOWLEDGED', 'FAILED'] as const;
 export const SEVERITIES = ['INFO', 'WARNING', 'ERROR', 'CRITICAL'] as const;
-export const DEVICE_NAMES = ['ESP32', 'RASPBERRY_PI', 'MQTT_BROKER', 'CAMERA', 'INA219'] as const;
+export const DEVICE_NAMES = ['ESP32', 'RASPBERRY_PI', 'CAMERA', 'INA219'] as const;
 
 export const COMMAND_TYPES = [
   'SET_MODE',
