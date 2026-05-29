@@ -32,6 +32,10 @@ const VISION_HISTORY_SWR_SECONDS = 300;
 const COMMANDS_MAX_AGE_SECONDS = 5;
 const COMMANDS_SWR_SECONDS = 30;
 
+// Camera capture - produced on-demand after a CAPTURE_IMAGE command completes.
+const CAMERA_LATEST_MAX_AGE_SECONDS = 5;
+const CAMERA_LATEST_SWR_SECONDS = 30;
+
 // All API responses are scoped to the authenticated user via Bearer JWT.
 const IS_PRIVATE = true;
 
@@ -69,6 +73,11 @@ export const cachePolicy = {
   commands: {
     maxAge: COMMANDS_MAX_AGE_SECONDS,
     staleWhileRevalidate: COMMANDS_SWR_SECONDS,
+    isPrivate: IS_PRIVATE,
+  },
+  cameraLatest: {
+    maxAge: CAMERA_LATEST_MAX_AGE_SECONDS,
+    staleWhileRevalidate: CAMERA_LATEST_SWR_SECONDS,
     isPrivate: IS_PRIVATE,
   },
 } as const satisfies Record<string, CacheDirective>;

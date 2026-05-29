@@ -2,10 +2,12 @@ import { randomUUID } from 'node:crypto';
 import { WebSocket } from 'ws';
 
 import { logger } from '../../utils/logger';
-import { upsertDeviceStatus } from '../../services/deviceService';
+import { upsertDeviceStatus, getDeviceByName } from '../../services/deviceService';
+import { insertEvent } from '../../services/eventService';
 import type { DeviceConnection } from '../deviceRegistry';
 import { heartbeatPayloadSchema } from '../schemas';
 import { parseOr } from '../utils';
+import { EVENT_TYPES } from '../../utils/constants';
 
 export async function handleHeartbeat(conn: DeviceConnection, payload: unknown): Promise<void> {
   const parsed = parseOr(heartbeatPayloadSchema, payload, `heartbeat for ${conn.deviceId}`);
@@ -15,11 +17,24 @@ export async function handleHeartbeat(conn: DeviceConnection, payload: unknown):
 
   await upsertDeviceStatus('RASPBERRY_PI', true, null, 'Heartbeat');
   if (parsed.data.esp32_alive !== undefined) {
+    const esp32Alive = parsed.data.esp32_alive;
+
+    if (!esp32Alive) {
+      const prior = await getDeviceByName('ESP32');
+      if (prior?.isOnline === true) {
+        await insertEvent({
+          event_type: EVENT_TYPES.ESP32_OFFLINE,
+          severity: 'WARNING',
+          message: 'ESP32 reported offline by Pi heartbeat',
+        });
+      }
+    }
+
     await upsertDeviceStatus(
       'ESP32',
-      parsed.data.esp32_alive,
+      esp32Alive,
       null,
-      parsed.data.esp32_alive ? 'Reported alive by Pi heartbeat' : 'Reported offline by Pi heartbeat'
+      esp32Alive ? 'Reported alive by Pi heartbeat' : 'Reported offline by Pi heartbeat'
     );
   }
 

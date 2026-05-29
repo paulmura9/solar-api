@@ -161,12 +161,19 @@ async function timeoutPendingCommands(): Promise<void> {
   } else if (timedOutPending && timedOutPending.length > 0) {
     logger.info('commandService', `Timed out ${timedOutPending.length} PENDING command(s) older than ${env.COMMAND_TIMEOUT_SECONDS * 5}s`);
     for (const row of timedOutPending) {
+      const commandId = row.id as string;
       incCommandFailed('timeout_pending');
       broadcastCommandStatus({
-        id: row.id as string,
+        id: commandId,
         status: 'FAILED',
         error_message: errorMessage,
         acknowledged_at: null,
+      });
+
+      await insertEvent({
+        event_type: EVENT_TYPES.COMMAND_TIMEOUT,
+        severity: 'WARNING',
+        message: `Command ${commandId} never picked up by gateway (Pi offline or disconnected)`,
       });
     }
   }

@@ -90,6 +90,10 @@ export function broadcastCommandStatus(data: object): void {
   emit('command_status_update', data);
 }
 
+export function broadcastCaptureComplete(data: object): void {
+  emit('capture_complete', data);
+}
+
 export function notifyAllClientsShuttingDown(): void {
   emit('server_shutting_down', {});
 }

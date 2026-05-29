@@ -28,6 +28,7 @@ import { handleTelemetry } from './deviceHandlers/telemetry';
 import { handleCommandAck } from './deviceHandlers/commandAck';
 import { handleEsp32Event } from './deviceHandlers/esp32Event';
 import { handleVisionResult } from './deviceHandlers/vision';
+import { handleCameraCaptureResult } from './deviceHandlers/cameraCapture';
 import { handleHeartbeat } from './deviceHandlers/heartbeat';
 import { handleSyncRequest } from './deviceHandlers/syncRequest';
 
@@ -187,6 +188,7 @@ const DEVICE_MESSAGE_TYPES = [
   'command_ack',
   'esp32_event',
   'vision_result',
+  'camera_capture_result',
   'heartbeat',
   'sync_request',
 ] as const;
@@ -214,6 +216,9 @@ async function dispatchEnvelope(conn: DeviceConnection, envelope: WsEnvelope): P
       return;
     case 'vision_result':
       await handleVisionResult(envelope.payload);
+      return;
+    case 'camera_capture_result':
+      await handleCameraCaptureResult(envelope.payload);
       return;
     case 'heartbeat':
       await handleHeartbeat(conn, envelope.payload);

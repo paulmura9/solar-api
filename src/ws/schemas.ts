@@ -118,6 +118,32 @@ export const syncRequestPayloadSchema = z.object({
   last_command_id: UUID.nullable(),
 });
 
+const IMAGE_PATH_MAX = 500;
+const CAPTURE_ERROR_MESSAGE_MAX = 500;
+const CAPTURE_DIMENSION_MAX = 100_000;
+
+export const cameraCaptureResultPayloadSchema = z.discriminatedUnion('status', [
+  z
+    .object({
+      command_id: UUID,
+      status: z.literal('SUCCESS'),
+      image_path: z.string().min(1).max(IMAGE_PATH_MAX),
+      width: z.number().int().positive().max(CAPTURE_DIMENSION_MAX).optional(),
+      height: z.number().int().positive().max(CAPTURE_DIMENSION_MAX).optional(),
+      captured_at: ISO8601,
+    })
+    .strict(),
+  z
+    .object({
+      command_id: UUID,
+      status: z.literal('FAILED'),
+      error_message: z.string().min(1).max(CAPTURE_ERROR_MESSAGE_MAX).optional(),
+    })
+    .strict(),
+]);
+
+export type CameraCaptureResultPayload = z.infer<typeof cameraCaptureResultPayloadSchema>;
+
 export const outgoingCommandSchema = z
   .object({
     v: z.literal(1),
@@ -160,6 +186,7 @@ export type ServerOutboundType =
   | 'event'
   | 'vision_update'
   | 'command_status_update'
+  | 'capture_complete'
   | 'device_status_update'
   | 'server_shutting_down'
   | 'reauth_ok';
