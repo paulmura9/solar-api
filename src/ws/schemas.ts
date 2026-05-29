@@ -25,6 +25,10 @@ const BATTERY_VOLTAGE_MAX = 20;
 const SOLAR_VOLTAGE_MAX = 30;
 const SOLAR_CURRENT_MAX = 10;
 const SOLAR_POWER_MAX = 300;
+// Sensors report SI units (A / W) and can read a small negative deadband
+// near zero from offset/noise; accept it instead of rejecting the packet.
+const SOLAR_CURRENT_MIN = -0.5;
+const SOLAR_POWER_MIN = -1;
 
 export const wsEnvelopeSchema = z
   .object({
@@ -58,8 +62,8 @@ export const telemetryPayloadSchema = z
     battery_status: z.enum(BATTERY_STATUSES).nullable().optional(),
 
     solar_voltage: z.number().min(0).max(SOLAR_VOLTAGE_MAX).nullable().optional(),
-    solar_current: z.number().min(0).max(SOLAR_CURRENT_MAX).nullable().optional(),
-    solar_power: z.number().min(0).max(SOLAR_POWER_MAX).nullable().optional(),
+    solar_current: z.number().min(SOLAR_CURRENT_MIN).max(SOLAR_CURRENT_MAX).nullable().optional(),
+    solar_power: z.number().min(SOLAR_POWER_MIN).max(SOLAR_POWER_MAX).nullable().optional(),
     solar_energy_today_wh: z.number().min(0).nullable().optional(),
 
     charging_voltage: z.number().min(0).max(SOLAR_VOLTAGE_MAX).nullable().optional(),
