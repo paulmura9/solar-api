@@ -175,6 +175,8 @@ async function handleDeviceMessage(
     return;
   }
 
+  logger.info('ws.deviceHandler', `device msg received type=${envelope.type} id=${envelope.id} from ${conn.deviceId}`);
+
   try {
     await dispatchEnvelope(conn, envelope);
   } catch (err) {

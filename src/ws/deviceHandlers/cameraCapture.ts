@@ -4,6 +4,7 @@ import { insertEvent } from '../../services/eventService';
 import { broadcastCaptureComplete } from '../broadcaster';
 import { cameraCaptureResultPayloadSchema } from '../schemas';
 import { parseOr } from '../utils';
+import { logger } from '../../utils/logger';
 import { EVENT_TYPES } from '../../utils/constants';
 
 interface CaptureCompletePayload {
@@ -28,14 +29,22 @@ export async function handleCameraCaptureResult(payload: unknown): Promise<void>
       height: data.height ?? null,
       captured_at: data.captured_at,
     });
-    if (!inserted) return;
+
+    if (!inserted) {
+      // The image physically exists in Storage; only the metadata row failed.
+      // Acknowledge anyway so the command does not time out, and record the gap.
+      logger.error(
+        'ws.cameraCapture',
+        `camera_captures insert failed for command ${commandId}; acknowledging anyway (image_path=${data.image_path})`
+      );
+    }
 
     const ackPayload = {
-      capture_id: inserted.id,
-      image_path: inserted.imagePath,
-      width: inserted.width,
-      height: inserted.height,
-      captured_at: inserted.capturedAt,
+      capture_id: inserted?.id ?? null,
+      image_path: inserted?.imagePath ?? data.image_path,
+      width: inserted?.width ?? data.width ?? null,
+      height: inserted?.height ?? data.height ?? null,
+      captured_at: inserted?.capturedAt ?? data.captured_at,
     };
 
     const updated = await acknowledgeCommand(commandId, 'ACKNOWLEDGED', null, ackPayload);
@@ -43,15 +52,15 @@ export async function handleCameraCaptureResult(payload: unknown): Promise<void>
       await insertEvent({
         event_type: EVENT_TYPES.CAMERA_CAPTURE_ORPHANED,
         severity: 'WARNING',
-        message: `Camera capture stored (id=${inserted.id}) but command ${commandId} was unknown or already terminal`,
+        message: `Camera capture stored (id=${inserted?.id ?? 'none — insert failed'}) but command ${commandId} was unknown or already terminal`,
       });
     }
 
     const complete: CaptureCompletePayload = {
       command_id: commandId,
       status: 'SUCCESS',
-      image_path: inserted.imagePath,
-      captured_at: inserted.capturedAt,
+      image_path: inserted?.imagePath ?? data.image_path,
+      captured_at: inserted?.capturedAt ?? data.captured_at,
     };
     broadcastCaptureComplete(complete);
     return;
