@@ -103,6 +103,8 @@ export function registerDeviceConnection(ws: WebSocket, deviceId: string): void 
 
 async function onDeviceDisconnected(deviceId: string, reason: string): Promise<void> {
   await upsertDeviceStatus('RASPBERRY_PI', false, null, `WebSocket closed: ${reason}`);
+  // Camera is hosted on the Pi; if the Pi socket is gone, the camera is unreachable.
+  await upsertDeviceStatus('CAMERA', false, null, `Pi WebSocket closed: ${reason}`);
   await insertEvent({
     event_type: EVENT_TYPES.RASPBERRY_PI_OFFLINE,
     severity: 'WARNING',

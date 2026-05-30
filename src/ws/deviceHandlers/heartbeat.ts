@@ -38,6 +38,16 @@ export async function handleHeartbeat(conn: DeviceConnection, payload: unknown):
     );
   }
 
+  // Camera runs on the Pi; missing/undefined camera_ok means the Pi did not
+  // confirm the camera initialized, so treat it as offline.
+  const cameraOk = parsed.data.camera_ok ?? false;
+  await upsertDeviceStatus(
+    'CAMERA',
+    cameraOk,
+    null,
+    cameraOk ? 'Camera OK via Pi heartbeat' : 'Camera not OK via Pi heartbeat'
+  );
+
   if (conn.ws.readyState === WebSocket.OPEN) {
     const ack = {
       v: 1 as const,

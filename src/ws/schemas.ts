@@ -115,6 +115,7 @@ export type VisionResultPayload = z.infer<typeof visionResultPayloadSchema>;
 export const heartbeatPayloadSchema = z
   .object({
     esp32_alive: z.boolean().optional(),
+    camera_ok: z.boolean().optional(),
   })
   .strict();
 
