@@ -21,12 +21,13 @@ export async function insertVisionResult(
   payload: VisionResultPayload
 ): Promise<InsertedVisionResult | null> {
   const row = {
+    timestamp: payload.captured_at,
     dirt_level_percent: payload.dirt_level_percent,
     cleanliness_percent: payload.cleanliness_percent,
     cleaning_required: payload.cleaning_required,
-    confidence: payload.confidence ?? null,
-    image_path: payload.image_path ?? null,
-    processed_image_path: payload.processed_image_path ?? null,
+    confidence: payload.confidence,
+    image_path: payload.image_path,
+    processed_image_path: payload.processed_image_path,
   };
 
   const { data, error } = await supabase

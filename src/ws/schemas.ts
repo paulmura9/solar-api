@@ -94,19 +94,25 @@ export const esp32EventPayloadSchema = z
   })
   .strict();
 
+const IMAGE_PATH_MAX = 500;
+const PERCENT_SUM_TOTAL = 100;
+const PERCENT_SUM_TOLERANCE = 0.1;
+
 export const visionResultPayloadSchema = z
   .object({
     dirt_level_percent: z.number().min(DIRT_PERCENT_MIN).max(DIRT_PERCENT_MAX),
     cleanliness_percent: z.number().min(DIRT_PERCENT_MIN).max(DIRT_PERCENT_MAX),
     cleaning_required: z.boolean(),
-    confidence: z.number().min(CONFIDENCE_MIN).max(CONFIDENCE_MAX).nullable().optional(),
-    image_path: z.string().min(1).max(500).nullable().optional(),
-    processed_image_path: z.string().min(1).max(500).nullable().optional(),
+    confidence: z.number().min(CONFIDENCE_MIN).max(CONFIDENCE_MAX),
+    image_path: z.string().min(1).max(IMAGE_PATH_MAX),
+    processed_image_path: z.string().min(1).max(IMAGE_PATH_MAX).nullable(),
+    captured_at: ISO8601,
   })
   .strict()
   .refine(
-
-    (data) => Math.abs(data.dirt_level_percent + data.cleanliness_percent - 100) < 0.1,
+    (data) =>
+      Math.abs(data.dirt_level_percent + data.cleanliness_percent - PERCENT_SUM_TOTAL) <
+      PERCENT_SUM_TOLERANCE,
     { message: 'dirt_level_percent + cleanliness_percent must equal 100' }
   );
 
@@ -123,7 +129,6 @@ export const syncRequestPayloadSchema = z.object({
   last_command_id: UUID.nullable(),
 });
 
-const IMAGE_PATH_MAX = 500;
 const CAPTURE_ERROR_MESSAGE_MAX = 500;
 const CAPTURE_DIMENSION_MAX = 100_000;
 
