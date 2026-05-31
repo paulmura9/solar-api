@@ -3,7 +3,7 @@ import { logger } from '../utils/logger';
 import type { VisionResultPayload } from '../ws/schemas';
 
 const RETURN_COLUMNS =
-  'id, timestamp, dirt_level_percent, cleanliness_percent, cleaning_required, confidence, image_path, processed_image_path, created_at';
+  'id, timestamp, dirt_level_percent, cleanliness_percent, cleaning_required, confidence, image_path, processed_image_path, predicted_class, created_at';
 
 export interface InsertedVisionResult {
   id: number;
@@ -14,6 +14,7 @@ export interface InsertedVisionResult {
   confidence: number | null;
   imagePath: string | null;
   processedImagePath: string | null;
+  predictedClass: string | null;
   createdAt: string;
 }
 
@@ -28,6 +29,7 @@ export async function insertVisionResult(
     confidence: payload.confidence,
     image_path: payload.image_path,
     processed_image_path: payload.processed_image_path,
+    predicted_class: payload.predicted_class ?? null,
   };
 
   const { data, error } = await supabase
@@ -51,6 +53,7 @@ export async function insertVisionResult(
     confidence: (r['confidence'] as number | null) ?? null,
     imagePath: (r['image_path'] as string | null) ?? null,
     processedImagePath: (r['processed_image_path'] as string | null) ?? null,
+    predictedClass: (r['predicted_class'] as string | null) ?? null,
     createdAt: r['created_at'] as string,
   };
 }

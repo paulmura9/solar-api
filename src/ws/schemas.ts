@@ -4,6 +4,7 @@ import {
   BATTERY_STATUSES,
   SEVERITIES,
   COMMAND_TYPES,
+  PREDICTED_CLASSES,
   LDR_MIN,
   LDR_MAX,
   BATTERY_PERCENT_MIN,
@@ -106,6 +107,7 @@ export const visionResultPayloadSchema = z
     confidence: z.number().min(CONFIDENCE_MIN).max(CONFIDENCE_MAX),
     image_path: z.string().min(1).max(IMAGE_PATH_MAX),
     processed_image_path: z.string().min(1).max(IMAGE_PATH_MAX).nullable(),
+    predicted_class: z.enum(PREDICTED_CLASSES).nullable().optional(),
     captured_at: ISO8601,
   })
   .strict()
