@@ -96,6 +96,7 @@ export const esp32EventPayloadSchema = z
   .strict();
 
 const IMAGE_PATH_MAX = 500;
+const QUALITY_REASON_MAX = 500;
 const PERCENT_SUM_TOTAL = 100;
 const PERCENT_SUM_TOLERANCE = 0.1;
 
@@ -108,6 +109,8 @@ export const visionResultPayloadSchema = z
     image_path: z.string().min(1).max(IMAGE_PATH_MAX),
     processed_image_path: z.string().min(1).max(IMAGE_PATH_MAX).nullable(),
     predicted_class: z.enum(PREDICTED_CLASSES).nullable().optional(),
+    quality_ok: z.boolean().optional(),
+    quality_reason: z.string().max(QUALITY_REASON_MAX).nullable().optional(),
     captured_at: ISO8601,
   })
   .strict()

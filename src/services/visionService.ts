@@ -3,7 +3,7 @@ import { logger } from '../utils/logger';
 import type { VisionResultPayload } from '../ws/schemas';
 
 const RETURN_COLUMNS =
-  'id, timestamp, dirt_level_percent, cleanliness_percent, cleaning_required, confidence, image_path, processed_image_path, predicted_class, created_at';
+  'id, timestamp, dirt_level_percent, cleanliness_percent, cleaning_required, confidence, image_path, processed_image_path, predicted_class, quality_ok, quality_reason, created_at';
 
 export interface InsertedVisionResult {
   id: number;
@@ -15,6 +15,8 @@ export interface InsertedVisionResult {
   imagePath: string | null;
   processedImagePath: string | null;
   predictedClass: string | null;
+  qualityOk: boolean;
+  qualityReason: string | null;
   createdAt: string;
 }
 
@@ -30,6 +32,8 @@ export async function insertVisionResult(
     image_path: payload.image_path,
     processed_image_path: payload.processed_image_path,
     predicted_class: payload.predicted_class ?? null,
+    quality_ok: payload.quality_ok ?? true,
+    quality_reason: payload.quality_reason ?? null,
   };
 
   const { data, error } = await supabase
@@ -54,6 +58,8 @@ export async function insertVisionResult(
     imagePath: (r['image_path'] as string | null) ?? null,
     processedImagePath: (r['processed_image_path'] as string | null) ?? null,
     predictedClass: (r['predicted_class'] as string | null) ?? null,
+    qualityOk: r['quality_ok'] as boolean,
+    qualityReason: (r['quality_reason'] as string | null) ?? null,
     createdAt: r['created_at'] as string,
   };
 }

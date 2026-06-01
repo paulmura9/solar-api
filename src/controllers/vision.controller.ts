@@ -13,6 +13,8 @@ interface VisionResponse {
   image_path: string | null;
   processed_image_path: string | null;
   predicted_class: string | null;
+  quality_ok: boolean;
+  quality_reason: string | null;
   created_at: string;
 }
 
@@ -27,12 +29,14 @@ function rowToResponse(row: Record<string, unknown>): VisionResponse {
     image_path: (row['image_path'] as string | null) ?? null,
     processed_image_path: (row['processed_image_path'] as string | null) ?? null,
     predicted_class: (row['predicted_class'] as string | null) ?? null,
+    quality_ok: row['quality_ok'] as boolean,
+    quality_reason: (row['quality_reason'] as string | null) ?? null,
     created_at: row['created_at'] as string,
   };
 }
 
 const SELECT_FIELDS =
-  'id, timestamp, dirt_level_percent, cleanliness_percent, cleaning_required, confidence, image_path, processed_image_path, predicted_class, created_at';
+  'id, timestamp, dirt_level_percent, cleanliness_percent, cleaning_required, confidence, image_path, processed_image_path, predicted_class, quality_ok, quality_reason, created_at';
 
 export async function getLatestVision(_req: Request, res: Response): Promise<void> {
   const { data, error } = await supabase
