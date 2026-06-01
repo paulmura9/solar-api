@@ -26,6 +26,12 @@ const envSchema = z.object({
   FRONTEND_RATE_LIMIT_WINDOW_MINUTES: z.coerce.number().int().positive().default(1),
   FRONTEND_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(300),
 
+  // Cleaning-alert email (Resend). Fail-safe: if RESEND_API_KEY or
+  // ALERT_EMAIL_TO is missing, the alert is skipped, never sent.
+  RESEND_API_KEY: z.string().min(1).optional(),
+  ALERT_EMAIL_TO: z.string().email().optional(),
+  ALERT_EMAIL_FROM: z.string().email().default('onboarding@resend.dev'),
+
   DEVICE_API_KEY: z
     .string()
     .min(MIN_DEVICE_API_KEY_LENGTH, `DEVICE_API_KEY must be at least ${MIN_DEVICE_API_KEY_LENGTH} characters`),

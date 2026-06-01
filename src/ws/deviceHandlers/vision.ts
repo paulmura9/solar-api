@@ -1,5 +1,6 @@
 import { insertEvent } from '../../services/eventService';
-import { insertVisionResult } from '../../services/visionService';
+import { getPreviousVisionResult, insertVisionResult } from '../../services/visionService';
+import { isCleaningTransition, sendCleaningAlert } from '../../services/emailService';
 import { broadcastVision } from '../broadcaster';
 import { visionResultPayloadSchema } from '../schemas';
 import { parseOr } from '../utils';
@@ -19,5 +20,11 @@ export async function handleVisionResult(payload: unknown): Promise<void> {
       severity: 'WARNING',
       message: `Vision pipeline flagged cleaning required (dirt=${inserted.dirtLevelPercent}%)`,
     });
+  }
+
+  // Email only on the edge into "needs cleaning", never every cycle.
+  const previous = await getPreviousVisionResult(inserted.id);
+  if (isCleaningTransition(inserted, previous)) {
+    await sendCleaningAlert(inserted);
   }
 }

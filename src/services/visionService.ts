@@ -20,6 +20,40 @@ export interface InsertedVisionResult {
   createdAt: string;
 }
 
+export interface PreviousVisionResult {
+  cleaningRequired: boolean;
+  predictedClass: string | null;
+}
+
+/**
+ * Fetches the most recent vision_result excluding the given id (the row just
+ * inserted). Used to detect the clean -> dirty transition for cleaning alerts.
+ * Returns null when there is no prior result or on query error (fail-safe).
+ */
+export async function getPreviousVisionResult(
+  excludeId: number
+): Promise<PreviousVisionResult | null> {
+  const { data, error } = await supabase
+    .from('vision_results')
+    .select('cleaning_required, predicted_class')
+    .neq('id', excludeId)
+    .order('timestamp', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    logger.error('visionService', 'Failed to fetch previous vision_result', error);
+    return null;
+  }
+  if (!data) return null;
+
+  const r = data as Record<string, unknown>;
+  return {
+    cleaningRequired: r['cleaning_required'] as boolean,
+    predictedClass: (r['predicted_class'] as string | null) ?? null,
+  };
+}
+
 export async function insertVisionResult(
   payload: VisionResultPayload
 ): Promise<InsertedVisionResult | null> {
