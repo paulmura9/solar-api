@@ -116,8 +116,9 @@ export const visionResultPayloadSchema = z
   .strict()
   .refine(
     (data) =>
+      data.quality_ok === false ||
       Math.abs(data.dirt_level_percent + data.cleanliness_percent - PERCENT_SUM_TOTAL) <
-      PERCENT_SUM_TOLERANCE,
+        PERCENT_SUM_TOLERANCE,
     { message: 'dirt_level_percent + cleanliness_percent must equal 100' }
   );
 
