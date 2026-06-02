@@ -66,25 +66,31 @@ export async function getAllUserEmails(): Promise<string[]> {
   return [...emails];
 }
 
+interface ResolvedRecipients {
+  recipients: string[];
+  usedFallback: boolean;
+}
+
 /**
  * Resolves the alert recipients: all registered users, or ALERT_EMAIL_TO as a
- * fallback when there are no users or the listing failed. Returns an empty
- * array only when no recipient can be determined at all.
+ * fallback when there are no users or the listing failed (getAllUserEmails
+ * returns [] on error). `usedFallback` is reported so the caller can log it.
+ * `recipients` is empty only when no recipient can be determined at all.
  */
-async function resolveRecipients(): Promise<string[]> {
+async function resolveRecipients(): Promise<ResolvedRecipients> {
   const userEmails = await getAllUserEmails();
-  if (userEmails.length > 0) return userEmails;
+  if (userEmails.length > 0) return { recipients: userEmails, usedFallback: false };
 
   const fallback = env.ALERT_EMAIL_TO;
   if (fallback) {
     logger.warn(
       'emailService',
-      'No registered users found; falling back to ALERT_EMAIL_TO'
+      'No user emails available (none registered or listing failed); falling back to ALERT_EMAIL_TO'
     );
-    return [fallback];
+    return { recipients: [fallback], usedFallback: true };
   }
 
-  return [];
+  return { recipients: [], usedFallback: false };
 }
 
 /** A vision result "needs cleaning" when flagged or classified as dirty. */
@@ -120,26 +126,12 @@ function buildAlertHtml(result: InsertedVisionResult): string {
 }
 
 /**
- * Sends the cleaning alert via Resend. Best-effort and fail-safe: if Resend is
- * not configured it logs a warning and returns; any network/API error is
- * caught and logged. Never throws, so the saved vision_result is never lost.
+ * Sends a single cleaning-alert email to one recipient via Resend. Sends each
+ * address in its own request so one bad address (e.g. an invalid test account)
+ * cannot fail delivery to everyone else. Returns true on success, false on a
+ * non-OK status or network error. Never throws.
  */
-export async function sendCleaningAlert(result: InsertedVisionResult): Promise<void> {
-  const apiKey = env.RESEND_API_KEY;
-  if (!apiKey) {
-    logger.warn('emailService', 'Cleaning alert skipped: RESEND_API_KEY not configured');
-    return;
-  }
-
-  const recipients = await resolveRecipients();
-  if (recipients.length === 0) {
-    logger.warn(
-      'emailService',
-      'Cleaning alert skipped: no recipients (no users and ALERT_EMAIL_TO not set)'
-    );
-    return;
-  }
-
+async function sendToRecipient(apiKey: string, recipient: string, html: string): Promise<boolean> {
   try {
     const response = await fetch(RESEND_ENDPOINT, {
       method: 'POST',
@@ -149,23 +141,69 @@ export async function sendCleaningAlert(result: InsertedVisionResult): Promise<v
       },
       body: JSON.stringify({
         from: env.ALERT_EMAIL_FROM,
-        to: recipients,
+        to: [recipient],
         subject: ALERT_SUBJECT,
-        html: buildAlertHtml(result),
+        html,
       }),
     });
 
     if (!response.ok) {
       const body = await response.text();
-      logger.error('emailService', 'Resend API returned a non-OK status', {
+      logger.error('emailService', `Cleaning alert failed for ${recipient}`, {
         status: response.status,
         body,
       });
-      return;
+      return false;
     }
 
-    logger.info('emailService', `Cleaning alert email sent to ${recipients.length} recipient(s)`);
+    logger.info('emailService', `Cleaning alert sent to ${recipient}`);
+    return true;
   } catch (err) {
-    logger.error('emailService', 'Failed to send cleaning alert email', err);
+    logger.error('emailService', `Cleaning alert errored for ${recipient}`, err);
+    return false;
   }
+}
+
+/**
+ * Sends the cleaning alert via Resend. Best-effort and fail-safe: if Resend is
+ * not configured it logs a warning and returns. Each recipient is sent
+ * independently, so a single invalid address never blocks the others, and any
+ * network/API error is caught and logged per address. Never throws, so the
+ * saved vision_result is never lost.
+ */
+export async function sendCleaningAlert(result: InsertedVisionResult): Promise<void> {
+  const apiKey = env.RESEND_API_KEY;
+  if (!apiKey) {
+    logger.warn('emailService', 'Cleaning alert skipped: RESEND_API_KEY not configured');
+    return;
+  }
+
+  const { recipients, usedFallback } = await resolveRecipients();
+  if (recipients.length === 0) {
+    logger.warn(
+      'emailService',
+      'Cleaning alert skipped: no recipients (no users and ALERT_EMAIL_TO not set)'
+    );
+    return;
+  }
+
+  logger.info(
+    'emailService',
+    `Cleaning alert: dispatching to ${recipients.length} recipient(s) (fallback=${usedFallback})`
+  );
+
+  const html = buildAlertHtml(result);
+  let sent = 0;
+  let failed = 0;
+
+  for (const recipient of recipients) {
+    const ok = await sendToRecipient(apiKey, recipient, html);
+    if (ok) sent += 1;
+    else failed += 1;
+  }
+
+  logger.info(
+    'emailService',
+    `Cleaning alert dispatch complete: ${sent} sent, ${failed} failed of ${recipients.length}`
+  );
 }
