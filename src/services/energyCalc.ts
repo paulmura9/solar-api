@@ -25,6 +25,11 @@ export async function getEnergySummary(days: number): Promise<EnergySummaryDTO> 
 
   const rows = data ?? [];
 
+  // charged_energy_today_wh is a device-provided daily accumulator measured by
+  // the battery-side INA219, which reads NET battery current (charge minus the
+  // load drawn on the shared rail). totalDeliveredWh therefore represents net
+  // energy into the battery, not gross MPPT-delivered energy. We aggregate the
+  // daily maximum per calendar day; we do NOT integrate power over time.
   const generatedByDay = new Map<string, number>();
   const deliveredByDay = new Map<string, number>();
 

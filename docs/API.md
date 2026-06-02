@@ -134,7 +134,7 @@ Returns the single most recent row from `sensor_readings`.
 | `vertical_light_difference` | `integer \| null` | Top minus bottom LDR difference, can be negative |
 | `battery_voltage` | `number` | Pack voltage in volts (2S 18650, 6.6–8.4 V nominal) |
 | `battery_percent` | `integer \| null` | Estimated state of charge, 0–100 |
-| `battery_status` | `"CHARGING" \| "DISCHARGING" \| "IDLE" \| "LOW" \| "UNKNOWN" \| null` | Inferred charge state |
+| `battery_status` | `"CHARGING" \| "DISCHARGING" \| "NORMAL" \| "FULL" \| "LOW" \| "CRITICAL" \| "IDLE" \| "UNKNOWN" \| null` | Inferred charge state |
 | `solar_voltage` | `number \| null` | Panel output voltage in volts |
 | `solar_current` | `number \| null` | Panel current in amperes |
 | `solar_power` | `number \| null` | Instantaneous panel power in watts |
@@ -142,7 +142,7 @@ Returns the single most recent row from `sensor_readings`.
 | `charging_voltage` | `number \| null` | MPPT output voltage in volts |
 | `charging_current` | `number \| null` | MPPT output current in amperes |
 | `charging_power` | `number \| null` | Charging power in watts |
-| `charged_energy_today_wh` | `number \| null` | Energy delivered into battery today in Wh |
+| `charged_energy_today_wh` | `number \| null` | Net energy into the battery today in Wh (charge minus load on the shared rail, as measured by the battery-side INA219), not gross MPPT-delivered energy |
 | `ambient_light_lux` | `number \| null` | Ambient light level in lux |
 | `created_at` | `string` | ISO 8601, database insert timestamp |
 

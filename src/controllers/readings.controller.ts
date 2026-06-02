@@ -17,7 +17,7 @@ interface ReadingResponse {
   ldr_bottom_right: number | null;
   horizontal_light_difference: number | null;
   vertical_light_difference: number | null;
-  battery_voltage: number;
+  battery_voltage: number | null;
   battery_percent: number | null;
   battery_status: string | null;
   solar_voltage: number | null;
@@ -46,7 +46,7 @@ function rowToResponse(row: Record<string, unknown>): ReadingResponse {
     ldr_bottom_right: (row['ldr_bottom_right'] as number | null) ?? null,
     horizontal_light_difference: (row['horizontal_light_difference'] as number | null) ?? null,
     vertical_light_difference: (row['vertical_light_difference'] as number | null) ?? null,
-    battery_voltage: row['battery_voltage'] as number,
+    battery_voltage: (row['battery_voltage'] as number | null) ?? null,
     battery_percent: (row['battery_percent'] as number | null) ?? null,
     battery_status: (row['battery_status'] as string | null) ?? null,
     solar_voltage: (row['solar_voltage'] as number | null) ?? null,
@@ -124,7 +124,6 @@ export async function getReadingHistory(req: Request, res: Response): Promise<vo
   });
 }
 
-// unused — removal candidate
 export async function getReadingStats(req: Request, res: Response): Promise<void> {
   const hours = Number(req.query['hours'] ?? 24);
   const since = new Date(Date.now() - hours * MS_PER_HOUR).toISOString();

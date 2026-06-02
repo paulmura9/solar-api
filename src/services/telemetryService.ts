@@ -18,7 +18,7 @@ export interface InsertedTelemetry {
   ldrBottomRight: number | null;
   horizontalLightDifference: number | null;
   verticalLightDifference: number | null;
-  batteryVoltage: number;
+  batteryVoltage: number | null;
   batteryPercent: number | null;
   batteryStatus: string | null;
   solarVoltage: number | null;
@@ -48,7 +48,7 @@ export async function insertTelemetry(payload: TelemetryPayload): Promise<Insert
     horizontal_light_difference: payload.horizontal_light_difference ?? null,
     vertical_light_difference: payload.vertical_light_difference ?? null,
 
-    battery_voltage: payload.battery_voltage,
+    battery_voltage: payload.battery_voltage ?? null,
     battery_percent: payload.battery_percent ?? null,
     battery_status: payload.battery_status ?? null,
 
@@ -90,7 +90,7 @@ export async function insertTelemetry(payload: TelemetryPayload): Promise<Insert
     ldrBottomRight: (r['ldr_bottom_right'] as number | null) ?? null,
     horizontalLightDifference: (r['horizontal_light_difference'] as number | null) ?? null,
     verticalLightDifference: (r['vertical_light_difference'] as number | null) ?? null,
-    batteryVoltage: r['battery_voltage'] as number,
+    batteryVoltage: (r['battery_voltage'] as number | null) ?? null,
     batteryPercent: (r['battery_percent'] as number | null) ?? null,
     batteryStatus: (r['battery_status'] as string | null) ?? null,
     solarVoltage: (r['solar_voltage'] as number | null) ?? null,
