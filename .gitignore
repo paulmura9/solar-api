@@ -9,3 +9,6 @@ dist/
 .claude/
 CLAUDE.md
 SKILL.md
+AUDIT_BATTERY.md
+BACKEND_SECURITY_AUDIT.md
+AUDIT_*.md
