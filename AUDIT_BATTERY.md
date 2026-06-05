@@ -7,8 +7,6 @@ Architecture note: the running backend ingests telemetry over a **WebSocket
 Realtime / MQTT model described in `CLAUDE.md`. The audit reflects the code as
 it actually exists.
 
----
-
 ## 1. Telemetry ingestion & Zod validation
 
 Validation schema: `telemetryPayloadSchema` in `src/ws/schemas.ts:46-77`
