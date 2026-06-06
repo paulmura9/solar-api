@@ -16,12 +16,13 @@ function toResponse(dto: DeviceCommandDTO): object {
 }
 
 export async function postCommand(req: Request, res: Response): Promise<void> {
-  const { command_type, payload } = req.body as {
+  const { command_type, payload, device_id } = req.body as {
     command_type: CommandType;
     payload: Record<string, unknown>;
+    device_id?: string;
   };
 
-  const command = await createAndDispatchCommand(command_type, payload);
+  const command = await createAndDispatchCommand(command_type, payload, device_id);
 
   res.status(201).json({
     data: toResponse(command),

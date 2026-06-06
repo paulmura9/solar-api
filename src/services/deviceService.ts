@@ -122,6 +122,7 @@ export async function markStaleDevicesOffline(): Promise<void> {
       event_type: eventType,
       severity: 'WARNING',
       message: `${deviceName} offline (no heartbeat for ${env.DEVICE_OFFLINE_AFTER_SECONDS}s)`,
+      device_id: env.DEFAULT_DEVICE_ID,
     });
   }
 }

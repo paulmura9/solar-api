@@ -1,4 +1,5 @@
 import { supabase } from '../config/supabase';
+import { env } from '../config/env';
 import { logger } from '../utils/logger';
 import type { VisionResultPayload } from '../ws/schemas';
 
@@ -58,6 +59,7 @@ export async function insertVisionResult(
   payload: VisionResultPayload
 ): Promise<InsertedVisionResult | null> {
   const row = {
+    device_id: payload.device_id ?? env.DEFAULT_DEVICE_ID,
     timestamp: payload.captured_at,
     dirt_level_percent: payload.dirt_level_percent,
     cleanliness_percent: payload.cleanliness_percent,

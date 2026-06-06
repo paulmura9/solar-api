@@ -9,7 +9,8 @@ export function dispatchCommandToDevice(
   commandId: string,
   commandType: CommandType,
   payload: Record<string, unknown>,
-  timestamp: string
+  timestamp: string,
+  deviceId: string
 ): boolean {
   const outgoing: OutgoingCommand = {
     v: 1,
@@ -18,6 +19,7 @@ export function dispatchCommandToDevice(
     timestamp,
     payload: {
       command_type: commandType,
+      device_id: deviceId,
       args: payload,
     },
   };

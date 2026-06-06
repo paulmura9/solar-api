@@ -18,6 +18,11 @@ import {
 const ISO8601 = z.string().datetime({ offset: true });
 const UUID = z.string().uuid();
 
+// Optional device identity on inbound gateway payloads. When omitted the
+// handler/service falls back to env.DEFAULT_DEVICE_ID. Kept as a plain
+// non-empty string here; the devices(id) FK validates the value at insert.
+const optionalDeviceId = z.string().min(1).optional();
+
 const SERVO_REPORT_MIN = 0;
 const SERVO_REPORT_MAX = 180;
 
@@ -45,6 +50,8 @@ export type WsEnvelope = z.infer<typeof wsEnvelopeSchema>;
 
 export const telemetryPayloadSchema = z
   .object({
+    device_id: optionalDeviceId,
+
     horizontal_angle: z.number().min(SERVO_REPORT_MIN).max(SERVO_REPORT_MAX),
     vertical_angle: z.number().min(SERVO_REPORT_MIN).max(SERVO_REPORT_MAX),
     tracking_mode: z.enum(TRACKING_MODES),
@@ -81,6 +88,8 @@ export type TelemetryPayload = z.infer<typeof telemetryPayloadSchema>;
 export const commandAckPayloadSchema = z
   .object({
     commandId: UUID,
+    // Accepted but ignored for matching at Level 1; matching stays by commandId.
+    device_id: optionalDeviceId,
     status: z.enum(['ACKNOWLEDGED', 'FAILED']),
     error_message: z.string().max(500).nullable().optional(),
     ack_payload: z.record(z.unknown()).optional(),
@@ -102,6 +111,7 @@ const PERCENT_SUM_TOLERANCE = 0.1;
 
 export const visionResultPayloadSchema = z
   .object({
+    device_id: optionalDeviceId,
     dirt_level_percent: z.number().min(DIRT_PERCENT_MIN).max(DIRT_PERCENT_MAX),
     cleanliness_percent: z.number().min(DIRT_PERCENT_MIN).max(DIRT_PERCENT_MAX),
     cleaning_required: z.boolean(),
@@ -142,6 +152,7 @@ export const cameraCaptureResultPayloadSchema = z.discriminatedUnion('status', [
   z
     .object({
       command_id: UUID,
+      device_id: optionalDeviceId,
       status: z.literal('SUCCESS'),
       image_path: z.string().min(1).max(IMAGE_PATH_MAX),
       width: z.number().int().positive().max(CAPTURE_DIMENSION_MAX).optional(),
@@ -152,6 +163,7 @@ export const cameraCaptureResultPayloadSchema = z.discriminatedUnion('status', [
   z
     .object({
       command_id: UUID,
+      device_id: optionalDeviceId,
       status: z.literal('FAILED'),
       error_message: z.string().min(1).max(CAPTURE_ERROR_MESSAGE_MAX).optional(),
     })
@@ -169,6 +181,7 @@ export const outgoingCommandSchema = z
     payload: z
       .object({
         command_type: z.enum(COMMAND_TYPES),
+        device_id: z.string().min(1),
         args: z.record(z.unknown()),
       })
       .strict(),

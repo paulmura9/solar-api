@@ -7,6 +7,7 @@ import { insertEvent } from '../../services/eventService';
 import type { DeviceConnection } from '../deviceRegistry';
 import { heartbeatPayloadSchema } from '../schemas';
 import { parseOr } from '../utils';
+import { env } from '../../config/env';
 import { EVENT_TYPES } from '../../utils/constants';
 
 export async function handleHeartbeat(conn: DeviceConnection, payload: unknown): Promise<void> {
@@ -26,6 +27,7 @@ export async function handleHeartbeat(conn: DeviceConnection, payload: unknown):
           event_type: EVENT_TYPES.ESP32_OFFLINE,
           severity: 'WARNING',
           message: 'ESP32 reported offline by Pi heartbeat',
+          device_id: env.DEFAULT_DEVICE_ID,
         });
       }
     }

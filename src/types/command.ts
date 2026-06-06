@@ -5,6 +5,7 @@ export type CommandStatus = (typeof COMMAND_STATUSES)[number];
 
 export interface DeviceCommandDTO {
   id: string;
+  deviceId: string;
   commandType: CommandType;
   payload: Record<string, unknown>;
   status: CommandStatus;

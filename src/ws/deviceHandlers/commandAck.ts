@@ -26,6 +26,7 @@ export async function handleCommandAck(payload: unknown): Promise<void> {
       event_type: EVENT_TYPES.COMMAND_FAILED,
       severity: 'ERROR',
       message: `Command ${commandId} failed: ${errorMsg ?? 'no detail'}`,
+      device_id: updated.deviceId,
     });
   }
 }

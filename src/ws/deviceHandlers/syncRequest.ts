@@ -22,7 +22,7 @@ export async function handleSyncRequest(conn: DeviceConnection, payload: unknown
 
   for (const cmd of pending) {
     if (conn.ws.readyState !== WebSocket.OPEN) break;
-    const sent = dispatchCommandToDevice(cmd.id, cmd.commandType, cmd.payload, cmd.createdAt);
+    const sent = dispatchCommandToDevice(cmd.id, cmd.commandType, cmd.payload, cmd.createdAt, cmd.deviceId);
     if (!sent) {
       logger.error('ws.deviceHandler', `Resync send failed for command ${cmd.id}`);
       break;

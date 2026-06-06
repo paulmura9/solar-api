@@ -5,6 +5,7 @@ import { broadcastCaptureComplete } from '../broadcaster';
 import { cameraCaptureResultPayloadSchema } from '../schemas';
 import { parseOr } from '../utils';
 import { logger } from '../../utils/logger';
+import { env } from '../../config/env';
 import { EVENT_TYPES } from '../../utils/constants';
 
 interface CaptureCompletePayload {
@@ -24,6 +25,7 @@ export async function handleCameraCaptureResult(payload: unknown): Promise<void>
   if (data.status === 'SUCCESS') {
     const inserted = await insertCameraCapture({
       command_id: commandId,
+      device_id: data.device_id,
       image_path: data.image_path,
       width: data.width ?? null,
       height: data.height ?? null,
@@ -53,6 +55,7 @@ export async function handleCameraCaptureResult(payload: unknown): Promise<void>
         event_type: EVENT_TYPES.CAMERA_CAPTURE_ORPHANED,
         severity: 'WARNING',
         message: `Camera capture stored (id=${inserted?.id ?? 'none — insert failed'}) but command ${commandId} was unknown or already terminal`,
+        device_id: data.device_id ?? env.DEFAULT_DEVICE_ID,
       });
     }
 
@@ -73,12 +76,14 @@ export async function handleCameraCaptureResult(payload: unknown): Promise<void>
       event_type: EVENT_TYPES.CAMERA_CAPTURE_ORPHANED,
       severity: 'WARNING',
       message: `Camera capture FAILED report for unknown or already-terminal command ${commandId}`,
+      device_id: data.device_id ?? env.DEFAULT_DEVICE_ID,
     });
   } else {
     await insertEvent({
       event_type: EVENT_TYPES.COMMAND_FAILED,
       severity: 'ERROR',
       message: `Camera capture command ${commandId} failed: ${errorMessage}`,
+      device_id: updated.deviceId,
     });
   }
 

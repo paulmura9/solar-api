@@ -9,11 +9,12 @@ import { incCommandAcknowledged, incCommandFailed } from '../utils/metrics';
 import { EVENT_TYPES } from '../utils/constants';
 import type { DeviceCommandDTO, CommandType, CommandStatus } from '../types/command';
 
-const COMMAND_COLUMNS = 'id, command_type, payload, status, error_message, created_at, sent_at, acknowledged_at';
+const COMMAND_COLUMNS = 'id, device_id, command_type, payload, status, error_message, created_at, sent_at, acknowledged_at';
 
 function rowToDTO(row: Record<string, unknown>): DeviceCommandDTO {
   return {
     id: row['id'] as string,
+    deviceId: row['device_id'] as string,
     commandType: row['command_type'] as CommandType,
     payload: (row['payload'] as Record<string, unknown>) ?? {},
     status: row['status'] as CommandStatus,
@@ -32,14 +33,23 @@ function rowToDTO(row: Record<string, unknown>): DeviceCommandDTO {
 // (~30-50ms) before the dispatch.
 export async function createAndDispatchCommand(
   commandType: CommandType,
-  payload: Record<string, unknown>
+  payload: Record<string, unknown>,
+  deviceId?: string
 ): Promise<DeviceCommandDTO> {
   const id = randomUUID();
   const createdAt = new Date().toISOString();
+  const targetDeviceId = deviceId ?? env.DEFAULT_DEVICE_ID;
 
   const insertResult = await supabase
     .from('device_commands')
-    .insert({ id, command_type: commandType, payload, status: 'PENDING', created_at: createdAt })
+    .insert({
+      id,
+      device_id: targetDeviceId,
+      command_type: commandType,
+      payload,
+      status: 'PENDING',
+      created_at: createdAt,
+    })
     .select(COMMAND_COLUMNS)
     .single();
 
@@ -51,7 +61,7 @@ export async function createAndDispatchCommand(
 
   const dto = rowToDTO(insertResult.data);
 
-  const dispatched = dispatchCommandToDevice(id, commandType, payload, createdAt);
+  const dispatched = dispatchCommandToDevice(id, commandType, payload, createdAt, targetDeviceId);
   if (dispatched) {
     const sentAt = new Date().toISOString();
     await markCommandSent(id, sentAt);
@@ -89,7 +99,7 @@ async function timeoutSentCommands(): Promise<void> {
 
   const { data, error } = await supabase
     .from('device_commands')
-    .select('id, command_type, sent_at')
+    .select('id, device_id, command_type, sent_at')
     .eq('status', 'SENT')
     .lt('sent_at', cutoff);
 
@@ -103,6 +113,7 @@ async function timeoutSentCommands(): Promise<void> {
   for (const row of data ?? []) {
     const commandId = row.id as string;
     const commandType = row.command_type as string;
+    const deviceId = row.device_id as string;
 
     const { error: updateError } = await supabase
       .from('device_commands')
@@ -129,6 +140,7 @@ async function timeoutSentCommands(): Promise<void> {
       event_type: EVENT_TYPES.COMMAND_TIMEOUT,
       severity: 'WARNING',
       message: `Command ${commandId} (${commandType}) timed out after ${env.COMMAND_TIMEOUT_SECONDS}s`,
+      device_id: deviceId,
     });
   }
 }
@@ -154,7 +166,7 @@ async function timeoutPendingCommands(): Promise<void> {
     })
     .eq('status', 'PENDING')
     .lt('created_at', pendingCutoff)
-    .select('id');
+    .select('id, device_id');
 
   if (pendingError) {
     logger.error('commandService', 'Failed to timeout PENDING commands', pendingError);
@@ -162,6 +174,7 @@ async function timeoutPendingCommands(): Promise<void> {
     logger.info('commandService', `Timed out ${timedOutPending.length} PENDING command(s) older than ${env.COMMAND_TIMEOUT_SECONDS * 5}s`);
     for (const row of timedOutPending) {
       const commandId = row.id as string;
+      const deviceId = row.device_id as string;
       incCommandFailed('timeout_pending');
       broadcastCommandStatus({
         id: commandId,
@@ -174,6 +187,7 @@ async function timeoutPendingCommands(): Promise<void> {
         event_type: EVENT_TYPES.COMMAND_TIMEOUT,
         severity: 'WARNING',
         message: `Command ${commandId} never picked up by gateway (Pi offline or disconnected)`,
+        device_id: deviceId,
       });
     }
   }

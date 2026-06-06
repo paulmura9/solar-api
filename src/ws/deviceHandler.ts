@@ -109,6 +109,7 @@ async function onDeviceDisconnected(deviceId: string, reason: string): Promise<v
     event_type: EVENT_TYPES.RASPBERRY_PI_OFFLINE,
     severity: 'WARNING',
     message: `Pi disconnected (${reason})`,
+    device_id: env.DEFAULT_DEVICE_ID,
   });
 
   broadcastDeviceOffline(deviceId, 'RASPBERRY_PI');

@@ -4,6 +4,7 @@ import { isCleaningTransition, sendCleaningAlert } from '../../services/emailSer
 import { broadcastVision } from '../broadcaster';
 import { visionResultPayloadSchema } from '../schemas';
 import { parseOr } from '../utils';
+import { env } from '../../config/env';
 import { EVENT_TYPES } from '../../utils/constants';
 
 export async function handleVisionResult(payload: unknown): Promise<void> {
@@ -19,6 +20,7 @@ export async function handleVisionResult(payload: unknown): Promise<void> {
       event_type: EVENT_TYPES.CLEANING_REQUIRED,
       severity: 'WARNING',
       message: `Vision pipeline flagged cleaning required (dirt=${inserted.dirtLevelPercent}%)`,
+      device_id: parsed.data.device_id ?? env.DEFAULT_DEVICE_ID,
     });
   }
 

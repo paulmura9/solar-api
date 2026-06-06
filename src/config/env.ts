@@ -39,6 +39,14 @@ const envSchema = z.object({
     .string()
     .regex(DEVICE_ID_PATTERN, 'EXPECTED_DEVICE_ID must match /^[a-z0-9-]{3,64}$/'),
 
+  // Identity stamped onto telemetry/vision/capture/command rows and onto
+  // device-attributable system_events when the gateway omits one. Single
+  // device today; the FK on devices(id) validates the value at insert time.
+  DEFAULT_DEVICE_ID: z
+    .string()
+    .regex(DEVICE_ID_PATTERN, 'DEFAULT_DEVICE_ID must match /^[a-z0-9-]{3,64}$/')
+    .default('esp32-solar-01'),
+
   WS_HEARTBEAT_TIMEOUT_MS: z.coerce.number().int().positive().default(60_000),
   PROTOCOL_PING_INTERVAL_MS: z.coerce.number().int().positive().default(20_000),
   PROTOCOL_PING_TIMEOUT_MS: z.coerce.number().int().positive().default(10_000),

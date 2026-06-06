@@ -1,4 +1,5 @@
 import { supabase } from '../config/supabase';
+import { env } from '../config/env';
 import { logger } from '../utils/logger';
 import type { TelemetryPayload } from '../ws/schemas';
 
@@ -35,6 +36,8 @@ export interface InsertedTelemetry {
 
 export async function insertTelemetry(payload: TelemetryPayload): Promise<InsertedTelemetry | null> {
   const row = {
+    device_id: payload.device_id ?? env.DEFAULT_DEVICE_ID,
+
     horizontal_angle: payload.horizontal_angle,
     vertical_angle: payload.vertical_angle,
     tracking_mode: payload.tracking_mode,
