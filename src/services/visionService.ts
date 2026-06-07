@@ -1,13 +1,13 @@
 import { supabase } from '../config/supabase';
-import { env } from '../config/env';
 import { logger } from '../utils/logger';
 import type { VisionResultPayload } from '../ws/schemas';
 
 const RETURN_COLUMNS =
-  'id, timestamp, dirt_level_percent, cleanliness_percent, cleaning_required, confidence, image_path, processed_image_path, predicted_class, quality_ok, quality_reason, created_at';
+  'id, device_id, timestamp, dirt_level_percent, cleanliness_percent, cleaning_required, confidence, image_path, processed_image_path, predicted_class, quality_ok, quality_reason, created_at';
 
 export interface InsertedVisionResult {
   id: number;
+  deviceId: string;
   timestamp: string;
   dirtLevelPercent: number;
   cleanlinessPercent: number;
@@ -55,11 +55,18 @@ export async function getPreviousVisionResult(
   };
 }
 
+/**
+ * Inserts a vision_result row. `deviceId` is the authenticated identity of the
+ * device WS connection (NOT taken from the client payload, which could spoof
+ * another device); it is persisted explicitly instead of relying on the DB
+ * column default so the inserted row's owner is unambiguous.
+ */
 export async function insertVisionResult(
-  payload: VisionResultPayload
+  payload: VisionResultPayload,
+  deviceId: string
 ): Promise<InsertedVisionResult | null> {
   const row = {
-    device_id: payload.device_id ?? env.DEFAULT_DEVICE_ID,
+    device_id: deviceId,
     timestamp: payload.captured_at,
     dirt_level_percent: payload.dirt_level_percent,
     cleanliness_percent: payload.cleanliness_percent,
@@ -86,6 +93,7 @@ export async function insertVisionResult(
   const r = data as Record<string, unknown>;
   return {
     id: r['id'] as number,
+    deviceId: r['device_id'] as string,
     timestamp: r['timestamp'] as string,
     dirtLevelPercent: r['dirt_level_percent'] as number,
     cleanlinessPercent: r['cleanliness_percent'] as number,

@@ -7,9 +7,6 @@ const RESEND_ENDPOINT = 'https://api.resend.com/emails';
 const ALERT_SUBJECT = 'LightTrack: panel needs cleaning';
 const DIRTY_PREDICTED_CLASS = 'dirty';
 
-const USERS_PER_PAGE = 1000;
-const MAX_USER_PAGES = 100;
-
 const MONTH_ABBREVIATIONS = [
   'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
   'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
@@ -34,33 +31,40 @@ function formatCapturedAt(iso: string): string {
 }
 
 /**
- * Fetches every registered user's email via the Supabase admin API
- * (service_role). Pages through results and returns a de-duplicated list of
- * valid, non-null emails. Best-effort: on error it logs and returns whatever
- * was collected so the caller can fall back. Never throws.
+ * Resolves the email addresses of the users who own the given device, via the
+ * user_devices link table and the Supabase admin API (service_role). Returns a
+ * de-duplicated list of valid, non-null emails. Best-effort: on any error it
+ * logs and returns whatever was collected so the caller can fall back. Never
+ * throws.
  */
-export async function getAllUserEmails(): Promise<string[]> {
+export async function getUsersForDevice(deviceId: string): Promise<string[]> {
   const emails = new Set<string>();
 
-  for (let page = 1; page <= MAX_USER_PAGES; page += 1) {
-    const { data, error } = await supabase.auth.admin.listUsers({
-      page,
-      perPage: USERS_PER_PAGE,
-    });
+  const { data, error } = await supabase
+    .from('user_devices')
+    .select('user_id')
+    .eq('device_id', deviceId);
 
-    if (error) {
-      logger.error('emailService', 'Failed to list Supabase users', error);
-      break;
+  if (error) {
+    logger.error('emailService', `Failed to list users for device ${deviceId}`, error);
+    return [...emails];
+  }
+  if (!data) return [...emails];
+
+  for (const row of data) {
+    const userId = (row as Record<string, unknown>)['user_id'];
+    if (typeof userId !== 'string' || userId.length === 0) continue;
+
+    const { data: userData, error: userError } = await supabase.auth.admin.getUserById(userId);
+    if (userError) {
+      logger.error('emailService', `Failed to resolve email for user ${userId}`, userError);
+      continue;
     }
 
-    const { users } = data;
-    for (const user of users) {
-      if (typeof user.email === 'string' && user.email.length > 0) {
-        emails.add(user.email);
-      }
+    const email = userData.user?.email;
+    if (typeof email === 'string' && email.length > 0) {
+      emails.add(email);
     }
-
-    if (users.length < USERS_PER_PAGE) break;
   }
 
   return [...emails];
@@ -72,20 +76,22 @@ interface ResolvedRecipients {
 }
 
 /**
- * Resolves the alert recipients: all registered users, or ALERT_EMAIL_TO as a
- * fallback when there are no users or the listing failed (getAllUserEmails
- * returns [] on error). `usedFallback` is reported so the caller can log it.
- * `recipients` is empty only when no recipient can be determined at all.
+ * Resolves the alert recipients: the users who own the given device, or
+ * ALERT_EMAIL_TO as a fallback when the device has no linked users (or the
+ * lookup failed, since getUsersForDevice returns [] on error). The fallback
+ * keeps the admin alerted during setup before any user_devices rows exist.
+ * `usedFallback` is reported so the caller can log it. `recipients` is empty
+ * only when no recipient can be determined at all.
  */
-async function resolveRecipients(): Promise<ResolvedRecipients> {
-  const userEmails = await getAllUserEmails();
+export async function resolveRecipients(deviceId: string): Promise<ResolvedRecipients> {
+  const userEmails = await getUsersForDevice(deviceId);
   if (userEmails.length > 0) return { recipients: userEmails, usedFallback: false };
 
   const fallback = env.ALERT_EMAIL_TO;
   if (fallback) {
     logger.warn(
       'emailService',
-      'No user emails available (none registered or listing failed); falling back to ALERT_EMAIL_TO'
+      `No users linked to device ${deviceId} (none owned or lookup failed); falling back to ALERT_EMAIL_TO`
     );
     return { recipients: [fallback], usedFallback: true };
   }
@@ -113,11 +119,12 @@ export function isCleaningTransition(
   return previous === null || !isNeedsCleaning(previous);
 }
 
-function buildAlertHtml(result: InsertedVisionResult): string {
+function buildAlertHtml(result: InsertedVisionResult, deviceId: string): string {
   return [
     '<h2>LightTrack — panel needs cleaning</h2>',
     '<p>The vision pipeline detected that the solar panel needs cleaning.</p>',
     '<ul>',
+    `<li><strong>Device:</strong> ${deviceId}</li>`,
     `<li><strong>Dirt level:</strong> ${result.dirtLevelPercent}%</li>`,
     `<li><strong>Class:</strong> ${result.predictedClass ?? 'n/a'}</li>`,
     `<li><strong>Captured at:</strong> ${formatCapturedAt(result.timestamp)}</li>`,
@@ -171,28 +178,31 @@ async function sendToRecipient(apiKey: string, recipient: string, html: string):
  * network/API error is caught and logged per address. Never throws, so the
  * saved vision_result is never lost.
  */
-export async function sendCleaningAlert(result: InsertedVisionResult): Promise<void> {
+export async function sendCleaningAlert(
+  result: InsertedVisionResult,
+  deviceId: string
+): Promise<void> {
   const apiKey = env.RESEND_API_KEY;
   if (!apiKey) {
     logger.warn('emailService', 'Cleaning alert skipped: RESEND_API_KEY not configured');
     return;
   }
 
-  const { recipients, usedFallback } = await resolveRecipients();
+  const { recipients, usedFallback } = await resolveRecipients(deviceId);
   if (recipients.length === 0) {
     logger.warn(
       'emailService',
-      'Cleaning alert skipped: no recipients (no users and ALERT_EMAIL_TO not set)'
+      `Cleaning alert skipped for device ${deviceId}: no recipients (no linked users and ALERT_EMAIL_TO not set)`
     );
     return;
   }
 
   logger.info(
     'emailService',
-    `Cleaning alert: dispatching to ${recipients.length} recipient(s) (fallback=${usedFallback})`
+    `Cleaning alert for device ${deviceId}: dispatching to ${recipients.length} recipient(s) (fallback=${usedFallback})`
   );
 
-  const html = buildAlertHtml(result);
+  const html = buildAlertHtml(result, deviceId);
   let sent = 0;
   let failed = 0;
 

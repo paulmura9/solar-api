@@ -220,7 +220,7 @@ async function dispatchEnvelope(conn: DeviceConnection, envelope: WsEnvelope): P
       await handleEsp32Event(envelope.payload);
       return;
     case 'vision_result':
-      await handleVisionResult(envelope.payload);
+      await handleVisionResult(conn.deviceId, envelope.payload);
       return;
     case 'camera_capture_result':
       await handleCameraCaptureResult(envelope.payload);
