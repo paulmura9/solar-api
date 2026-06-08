@@ -1,12 +1,10 @@
 import { supabase } from '../config/supabase';
-import { env } from '../config/env';
 import { logger } from '../utils/logger';
 
-const RETURN_COLUMNS = 'id, command_id, image_path, width, height, captured_at';
+const RETURN_COLUMNS = 'id, command_id, device_id, image_path, width, height, captured_at';
 
 export interface InsertCameraCaptureInput {
   command_id: string;
-  device_id?: string | undefined;
   image_path: string;
   width: number | null;
   height: number | null;
@@ -16,6 +14,7 @@ export interface InsertCameraCaptureInput {
 export interface InsertedCameraCapture {
   id: number;
   commandId: string;
+  deviceId: string;
   imagePath: string;
   width: number | null;
   height: number | null;
@@ -27,7 +26,6 @@ export async function insertCameraCapture(
 ): Promise<InsertedCameraCapture | null> {
   const row = {
     command_id: input.command_id,
-    device_id: input.device_id ?? env.DEFAULT_DEVICE_ID,
     image_path: input.image_path,
     width: input.width,
     height: input.height,
@@ -49,6 +47,7 @@ export async function insertCameraCapture(
   return {
     id: r['id'] as number,
     commandId: r['command_id'] as string,
+    deviceId: r['device_id'] as string,
     imagePath: r['image_path'] as string,
     width: (r['width'] as number | null) ?? null,
     height: (r['height'] as number | null) ?? null,

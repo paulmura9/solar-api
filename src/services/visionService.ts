@@ -56,17 +56,15 @@ export async function getPreviousVisionResult(
 }
 
 /**
- * Inserts a vision_result row. `deviceId` is the authenticated identity of the
- * device WS connection (NOT taken from the client payload, which could spoof
- * another device); it is persisted explicitly instead of relying on the DB
- * column default so the inserted row's owner is unambiguous.
+ * Inserts a vision_result row. The owning device_id is NOT set here: the
+ * authenticated WS identity is the Pi gateway, not the panel being measured,
+ * so we let the DB column default (the panel device id) apply. The stored
+ * device_id is read back via RETURN_COLUMNS into the returned DTO.
  */
 export async function insertVisionResult(
-  payload: VisionResultPayload,
-  deviceId: string
+  payload: VisionResultPayload
 ): Promise<InsertedVisionResult | null> {
   const row = {
-    device_id: deviceId,
     timestamp: payload.captured_at,
     dirt_level_percent: payload.dirt_level_percent,
     cleanliness_percent: payload.cleanliness_percent,

@@ -49,6 +49,7 @@ function mockGetUserById(t: TestContext, emailByUser: Record<string, string | nu
 function current(overrides: Partial<InsertedVisionResult>): InsertedVisionResult {
   return {
     id: 2,
+    deviceId: 'esp32-solar-01',
     timestamp: '2026-06-01T10:00:00.000Z',
     dirtLevelPercent: 80,
     cleanlinessPercent: 20,

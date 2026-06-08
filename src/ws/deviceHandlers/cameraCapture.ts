@@ -25,7 +25,6 @@ export async function handleCameraCaptureResult(payload: unknown): Promise<void>
   if (data.status === 'SUCCESS') {
     const inserted = await insertCameraCapture({
       command_id: commandId,
-      device_id: data.device_id,
       image_path: data.image_path,
       width: data.width ?? null,
       height: data.height ?? null,
