@@ -39,11 +39,6 @@ export const createCommandSchema = z.discriminatedUnion('command_type', [
     ...deviceIdField,
   }),
   z.object({
-    command_type: z.literal('TRIGGER_CLEANING'),
-    payload: z.object({}).optional().default({}),
-    ...deviceIdField,
-  }),
-  z.object({
     command_type: z.literal('CAPTURE_IMAGE'),
     payload: z.object({}).optional().default({}),
     ...deviceIdField,

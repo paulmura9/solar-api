@@ -70,8 +70,6 @@ Set the required environment variables (a `.env` file is loaded at startup). The
 - `SUPABASE_URL`
 - `SUPABASE_SERVICE_ROLE_KEY`
 - `CORS_ORIGIN`
-- `LOCATION_LAT`
-- `LOCATION_LON`
 - `DEVICE_API_KEY`
 - `EXPECTED_DEVICE_ID`
 

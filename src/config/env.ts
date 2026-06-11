@@ -15,9 +15,6 @@ const envSchema = z.object({
 
   CORS_ORIGIN: z.string().min(1, 'CORS_ORIGIN is required'),
 
-  LOCATION_LAT: z.coerce.number().min(-90).max(90),
-  LOCATION_LON: z.coerce.number().min(-180).max(180),
-
   COMMAND_TIMEOUT_SECONDS: z.coerce.number().int().positive().default(10),
   COMMAND_TIMEOUT_CHECK_INTERVAL_SECONDS: z.coerce.number().int().positive().default(30),
   DEVICE_OFFLINE_AFTER_SECONDS: z.coerce.number().int().positive().default(90),

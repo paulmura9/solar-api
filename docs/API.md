@@ -523,7 +523,6 @@ Creates a new command and dispatches it to the ESP32 via MQTT.
 | `REQUEST_STATUS` | `{}` |
 | `START_TRACKING` | `{}` |
 | `STOP_TRACKING` | `{}` |
-| `TRIGGER_CLEANING` | `{}` |
 
 **Response — 201**
 

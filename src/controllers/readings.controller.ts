@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import { supabase } from '../config/supabase';
 import { logger } from '../utils/logger';
 import { HttpError } from '../utils/httpError';
-import { MS_PER_HOUR } from '../utils/constants';
+import { MS_PER_HOUR, HISTORY_MAX_POINTS, HISTORY_FETCH_CAP, HISTORY_PAGE_SIZE } from '../utils/constants';
 
 interface ReadingResponse {
   id: number;
@@ -91,13 +91,74 @@ export async function getLatestReading(_req: Request, res: Response): Promise<vo
   });
 }
 
+// Downsample, NOT an aggregate: real rows are returned unchanged (string
+// fields like tracking_mode and battery_status stay valid), keeping every
+// Nth row plus the first and last so the series spans the fetched window.
+function downsampleRows(rows: Record<string, unknown>[]): Record<string, unknown>[] {
+  if (rows.length <= HISTORY_MAX_POINTS) return rows;
+  const step = Math.ceil(rows.length / HISTORY_MAX_POINTS);
+  const sampled: Record<string, unknown>[] = [];
+  for (let i = 0; i < rows.length; i += step) sampled.push(rows[i]);
+  const last = rows[rows.length - 1];
+  if (sampled[sampled.length - 1] !== last) sampled.push(last);
+  return sampled;
+}
+
+async function getWindowedHistory(res: Response, hours: number, limit: number): Promise<void> {
+  const sinceIso = new Date(Date.now() - hours * MS_PER_HOUR).toISOString();
+
+  // Page through the window newest-first (PostgREST caps a single response,
+  // so one big .limit() cannot exceed the server page size). Trade-off: if
+  // the window holds more than HISTORY_FETCH_CAP rows (~14h of continuous
+  // 1 Hz telemetry), only the most recent HISTORY_FETCH_CAP are sampled —
+  // acceptable for this single, intermittently-reporting device.
+  const collected: Record<string, unknown>[] = [];
+  while (collected.length < HISTORY_FETCH_CAP) {
+    const from = collected.length;
+    const to = Math.min(from + HISTORY_PAGE_SIZE, HISTORY_FETCH_CAP) - 1;
+    const { data, error } = await supabase
+      .from('sensor_readings')
+      .select(SELECT_FIELDS)
+      .gte('timestamp', sinceIso)
+      .order('timestamp', { ascending: false })
+      .range(from, to);
+
+    if (error) {
+      logger.error('readings.controller', 'Failed to fetch reading history', error);
+      throw new HttpError(500, 'Failed to fetch reading history');
+    }
+
+    const rows = (data ?? []) as unknown as Record<string, unknown>[];
+    collected.push(...rows);
+    if (rows.length < to - from + 1) break; // window exhausted
+  }
+
+  const sampled = downsampleRows(collected);
+
+  res.json({
+    data: sampled.map(rowToResponse),
+    total: sampled.length,
+    limit,
+    offset: 0,
+    timestamp: new Date().toISOString(),
+  });
+}
+
 export async function getReadingHistory(req: Request, res: Response): Promise<void> {
-  const { limit, offset, start_date, end_date } = req.query as {
+  const { limit, offset, start_date, end_date, hours } = req.query as {
     limit: string;
     offset: string;
     start_date?: string;
     end_date?: string;
+    hours?: string;
   };
+
+  // hours defines a rolling window ending now and takes precedence over
+  // start_date/end_date and offset.
+  if (hours !== undefined) {
+    await getWindowedHistory(res, Number(hours), Number(limit));
+    return;
+  }
 
   let query = supabase
     .from('sensor_readings')

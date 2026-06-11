@@ -12,7 +12,6 @@ export const COMMAND_TYPES = [
   'REQUEST_STATUS',
   'START_TRACKING',
   'STOP_TRACKING',
-  'TRIGGER_CLEANING',
   'CAPTURE_IMAGE',
 ] as const;
 
@@ -27,6 +26,10 @@ export const CONFIDENCE_MAX = 1;
 
 export const HISTORY_DEFAULT_LIMIT = 100;
 export const HISTORY_MAX_LIMIT = 1000;
+export const HISTORY_HOURS_MAX = 720;
+export const HISTORY_MAX_POINTS = 500;
+export const HISTORY_FETCH_CAP = 50_000;
+export const HISTORY_PAGE_SIZE = 1000;
 export const EVENTS_DEFAULT_LIMIT = 20;
 export const EVENTS_MAX_LIMIT = 100;
 export const VISION_DEFAULT_LIMIT = 50;
