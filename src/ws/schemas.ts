@@ -170,8 +170,6 @@ export const cameraCaptureResultPayloadSchema = z.discriminatedUnion('status', [
     .strict(),
 ]);
 
-export type CameraCaptureResultPayload = z.infer<typeof cameraCaptureResultPayloadSchema>;
-
 export const outgoingCommandSchema = z
   .object({
     v: z.literal(1),
