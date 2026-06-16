@@ -5,7 +5,7 @@ import type { DeviceStatusDTO, DeviceName } from '../types/device';
 import { env } from '../config/env';
 import { EVENT_TYPES } from '../utils/constants';
 
-const DEVICE_COLUMNS = 'id, device_name, is_online, last_seen, firmware_version, status_message, updated_at';
+const DEVICE_COLUMNS = 'id, device_name, device_id, is_online, last_seen, firmware_version, status_message, updated_at';
 
 type OfflineEventType =
   | typeof EVENT_TYPES.ESP32_OFFLINE
@@ -26,6 +26,7 @@ export async function upsertDeviceStatus(
   const { error } = await supabase.from('device_status').upsert(
     {
       device_name: deviceName,
+      device_id: env.DEFAULT_DEVICE_ID,
       is_online: isOnline,
       last_seen: new Date().toISOString(),
       firmware_version: firmwareVersion ?? null,
@@ -54,6 +55,7 @@ export async function getAllDevices(): Promise<DeviceStatusDTO[]> {
   return (data ?? []).map((row) => ({
     id: row.id as number,
     deviceName: row.device_name as DeviceName,
+    deviceId: row.device_id as string,
     isOnline: row.is_online as boolean,
     lastSeen: (row.last_seen as string | null) ?? null,
     firmwareVersion: (row.firmware_version as string | null) ?? null,
@@ -79,6 +81,7 @@ export async function getDeviceByName(deviceName: DeviceName): Promise<DeviceSta
   return {
     id: data.id as number,
     deviceName: data.device_name as DeviceName,
+    deviceId: data.device_id as string,
     isOnline: data.is_online as boolean,
     lastSeen: (data.last_seen as string | null) ?? null,
     firmwareVersion: (data.firmware_version as string | null) ?? null,

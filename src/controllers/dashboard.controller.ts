@@ -31,7 +31,7 @@ export async function getDashboardSummary(_req: Request, res: Response): Promise
     supabase
       .from('device_status')
       .select(`
-        id, device_name, is_online, last_seen,
+        id, device_name, device_id, is_online, last_seen,
         firmware_version, status_message, updated_at
       `)
       .order('device_name', { ascending: true }),

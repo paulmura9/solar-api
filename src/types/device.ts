@@ -5,6 +5,7 @@ export type DeviceName = (typeof DEVICE_NAMES)[number];
 export interface DeviceStatusDTO {
   id: number;
   deviceName: DeviceName;
+  deviceId: string;
   isOnline: boolean;
   lastSeen: string | null;
   firmwareVersion: string | null;
