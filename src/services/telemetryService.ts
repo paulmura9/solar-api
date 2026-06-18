@@ -34,6 +34,43 @@ export interface InsertedTelemetry {
   createdAt: string;
 }
 
+// Builds the broadcast DTO directly from an inbound payload, without a DB
+// round-trip. Used for the live feed, which emits every frame at the ESP32
+// send rate while persistence is throttled. These frames have no DB row, so
+// id is stamped from Date.now() (unique per frame, far above the serial DB
+// ids, so the frontend never confuses a live frame with a persisted one) and
+// timestamp/createdAt are the server receive time.
+export function buildTelemetryDTO(payload: TelemetryPayload): InsertedTelemetry {
+  const now = new Date().toISOString();
+  return {
+    id: Date.now(),
+    timestamp: now,
+    horizontalAngle: payload.horizontal_angle,
+    verticalAngle: payload.vertical_angle,
+    trackingMode: payload.tracking_mode,
+    isMoving: payload.is_moving,
+    ldrTopLeft: payload.ldr_top_left ?? null,
+    ldrTopRight: payload.ldr_top_right ?? null,
+    ldrBottomLeft: payload.ldr_bottom_left ?? null,
+    ldrBottomRight: payload.ldr_bottom_right ?? null,
+    horizontalLightDifference: payload.horizontal_light_difference ?? null,
+    verticalLightDifference: payload.vertical_light_difference ?? null,
+    batteryVoltage: payload.battery_voltage ?? null,
+    batteryPercent: payload.battery_percent ?? null,
+    batteryStatus: payload.battery_status ?? null,
+    solarVoltage: payload.solar_voltage ?? null,
+    solarCurrent: payload.solar_current ?? null,
+    solarPower: payload.solar_power ?? null,
+    solarEnergyTodayWh: payload.solar_energy_today_wh ?? null,
+    chargingVoltage: payload.charging_voltage ?? null,
+    chargingCurrent: payload.charging_current ?? null,
+    chargingPower: payload.charging_power ?? null,
+    chargedEnergyTodayWh: payload.charged_energy_today_wh ?? null,
+    ambientLightLux: payload.ambient_light_lux ?? null,
+    createdAt: now,
+  };
+}
+
 export async function insertTelemetry(payload: TelemetryPayload): Promise<InsertedTelemetry | null> {
   const row = {
     device_id: payload.device_id ?? env.DEFAULT_DEVICE_ID,
