@@ -34,12 +34,6 @@ export interface InsertedTelemetry {
   createdAt: string;
 }
 
-// Builds the broadcast DTO directly from an inbound payload, without a DB
-// round-trip. Used for the live feed, which emits every frame at the ESP32
-// send rate while persistence is throttled. These frames have no DB row, so
-// id is stamped from Date.now() (unique per frame, far above the serial DB
-// ids, so the frontend never confuses a live frame with a persisted one) and
-// timestamp/createdAt are the server receive time.
 export function buildTelemetryDTO(payload: TelemetryPayload): InsertedTelemetry {
   const now = new Date().toISOString();
   return {

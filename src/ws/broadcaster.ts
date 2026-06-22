@@ -6,11 +6,6 @@ import { clientRegistry } from './clientRegistry';
 import { incWsBroadcastError } from '../utils/metrics';
 import type { ServerOutboundEnvelope, ServerOutboundType } from './schemas';
 
-// Single-tenant broadcast: every connected client receives every telemetry,
-// event, vision, command-status, and device-status update. This is intentional
-// because the system tracks exactly one device (env.EXPECTED_DEVICE_ID). If
-// this API ever becomes multi-tenant, emit() must filter conn.userId against
-// the owning user/device — otherwise users will see each other's data.
 function emit(type: ServerOutboundType, payload: object): void {
   const message: ServerOutboundEnvelope = {
     v: 1,
@@ -37,7 +32,6 @@ const pendingOnlineAnnouncements = new Map<string, NodeJS.Timeout>();
 export function scheduleDeviceOnlineBroadcast(deviceId: string, deviceName: string): void {
   const existing = pendingOnlineAnnouncements.get(deviceId);
   if (existing) {
-    // Coalesce reconnect bursts: an announcement is already pending within the grace window.
     return;
   }
 

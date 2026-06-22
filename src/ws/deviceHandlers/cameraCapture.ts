@@ -32,8 +32,6 @@ export async function handleCameraCaptureResult(payload: unknown): Promise<void>
     });
 
     if (!inserted) {
-      // The image physically exists in Storage; only the metadata row failed.
-      // Acknowledge anyway so the command does not time out, and record the gap.
       logger.error(
         'ws.cameraCapture',
         `camera_captures insert failed for command ${commandId}; acknowledging anyway (image_path=${data.image_path})`

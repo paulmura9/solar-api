@@ -25,8 +25,6 @@ class DeviceConnectionRegistry {
       try {
         existing.ws.close(WS_CLOSE_CODES.NORMAL, 'replaced');
       } catch {
-        // Best-effort close on a stale socket; failure here is harmless because
-        // we are about to replace the registry entry with the new connection.
       }
     }
 

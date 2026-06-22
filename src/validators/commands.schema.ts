@@ -3,8 +3,6 @@ import { COMMAND_STATUSES, COMMANDS_DEFAULT_LIMIT, COMMANDS_MAX_LIMIT } from '..
 
 const servoAngle = z.number().int().min(5).max(175);
 
-// Optional device target on inbound command bodies. Defaults to
-// DEFAULT_DEVICE_ID in commandService; the devices(id) FK validates at insert.
 const deviceIdField = { device_id: z.string().min(1).optional() };
 
 export const createCommandSchema = z.discriminatedUnion('command_type', [

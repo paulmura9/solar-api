@@ -21,7 +21,6 @@ export async function getDevices(_req: Request, res: Response): Promise<void> {
   res.json({ data: devices.map(toResponse), timestamp: new Date().toISOString() });
 }
 
-// unused — removal candidate
 export async function getDeviceLastSeen(req: Request, res: Response): Promise<void> {
   const rawDeviceName = req.params['device_name'];
   if (!(DEVICE_NAMES as readonly string[]).includes(rawDeviceName)) {

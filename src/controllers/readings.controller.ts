@@ -91,9 +91,6 @@ export async function getLatestReading(_req: Request, res: Response): Promise<vo
   });
 }
 
-// Downsample, NOT an aggregate: real rows are returned unchanged (string
-// fields like tracking_mode and battery_status stay valid), keeping every
-// Nth row plus the first and last so the series spans the fetched window.
 function downsampleRows(rows: Record<string, unknown>[]): Record<string, unknown>[] {
   if (rows.length <= HISTORY_MAX_POINTS) return rows;
   const step = Math.ceil(rows.length / HISTORY_MAX_POINTS);
@@ -107,11 +104,6 @@ function downsampleRows(rows: Record<string, unknown>[]): Record<string, unknown
 async function getWindowedHistory(res: Response, hours: number, limit: number): Promise<void> {
   const sinceIso = new Date(Date.now() - hours * MS_PER_HOUR).toISOString();
 
-  // Page through the window newest-first (PostgREST caps a single response,
-  // so one big .limit() cannot exceed the server page size). Trade-off: if
-  // the window holds more than HISTORY_FETCH_CAP rows (~14h of continuous
-  // 1 Hz telemetry), only the most recent HISTORY_FETCH_CAP are sampled —
-  // acceptable for this single, intermittently-reporting device.
   const collected: Record<string, unknown>[] = [];
   while (collected.length < HISTORY_FETCH_CAP) {
     const from = collected.length;
@@ -130,7 +122,7 @@ async function getWindowedHistory(res: Response, hours: number, limit: number): 
 
     const rows = (data ?? []) as unknown as Record<string, unknown>[];
     collected.push(...rows);
-    if (rows.length < to - from + 1) break; // window exhausted
+    if (rows.length < to - from + 1) break;
   }
 
   const sampled = downsampleRows(collected);
@@ -153,8 +145,6 @@ export async function getReadingHistory(req: Request, res: Response): Promise<vo
     hours?: string;
   };
 
-  // hours defines a rolling window ending now and takes precedence over
-  // start_date/end_date and offset.
   if (hours !== undefined) {
     await getWindowedHistory(res, Number(hours), Number(limit));
     return;

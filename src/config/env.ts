@@ -23,8 +23,6 @@ const envSchema = z.object({
   FRONTEND_RATE_LIMIT_WINDOW_MINUTES: z.coerce.number().int().positive().default(1),
   FRONTEND_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(300),
 
-  // Cleaning-alert email (Resend). Fail-safe: if RESEND_API_KEY or
-  // ALERT_EMAIL_TO is missing, the alert is skipped, never sent.
   RESEND_API_KEY: z.string().min(1).optional(),
   ALERT_EMAIL_TO: z.string().email().optional(),
   ALERT_EMAIL_FROM: z.string().email().default('onboarding@resend.dev'),
@@ -36,9 +34,6 @@ const envSchema = z.object({
     .string()
     .regex(DEVICE_ID_PATTERN, 'EXPECTED_DEVICE_ID must match /^[a-z0-9-]{3,64}$/'),
 
-  // Identity stamped onto telemetry/vision/capture/command rows and onto
-  // device-attributable system_events when the gateway omits one. Single
-  // device today; the FK on devices(id) validates the value at insert time.
   DEFAULT_DEVICE_ID: z
     .string()
     .regex(DEVICE_ID_PATTERN, 'DEFAULT_DEVICE_ID must match /^[a-z0-9-]{3,64}$/')

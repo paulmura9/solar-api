@@ -18,9 +18,6 @@ import {
 const ISO8601 = z.string().datetime({ offset: true });
 const UUID = z.string().uuid();
 
-// Optional device identity on inbound gateway payloads. When omitted the
-// handler/service falls back to env.DEFAULT_DEVICE_ID. Kept as a plain
-// non-empty string here; the devices(id) FK validates the value at insert.
 const optionalDeviceId = z.string().min(1).optional();
 
 const SERVO_REPORT_MIN = 0;
@@ -31,8 +28,6 @@ const BATTERY_VOLTAGE_MAX = 20;
 const SOLAR_VOLTAGE_MAX = 30;
 const SOLAR_CURRENT_MAX = 10;
 const SOLAR_POWER_MAX = 300;
-// Sensors report SI units (A / W) and can read a small negative deadband
-// near zero from offset/noise; accept it instead of rejecting the packet.
 const SOLAR_CURRENT_MIN = -0.5;
 const SOLAR_POWER_MIN = -1;
 
@@ -88,7 +83,6 @@ export type TelemetryPayload = z.infer<typeof telemetryPayloadSchema>;
 export const commandAckPayloadSchema = z
   .object({
     commandId: UUID,
-    // Accepted but ignored for matching at Level 1; matching stays by commandId.
     device_id: optionalDeviceId,
     status: z.enum(['ACKNOWLEDGED', 'FAILED']),
     error_message: z.string().max(500).nullable().optional(),

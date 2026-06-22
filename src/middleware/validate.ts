@@ -17,7 +17,6 @@ function validateRequest<T>(schema: ZodType<T>, source: RequestSource): RequestH
     if (source === 'body') {
       req.body = result.data;
     } else {
-      // Express 4 freezes the req.query object's reference; we mutate in place.
       Object.assign(req.query, result.data as Record<string, unknown>);
     }
     next();

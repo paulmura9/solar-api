@@ -14,10 +14,6 @@ interface CommandMetricsSnapshot {
   ws_broadcast_errors_total: number;
 }
 
-// In-memory process-local counters. Reset on restart; not persisted. The
-// dispatched map is seeded with the known command types so a snapshot always
-// reports every type, but it tolerates unknown types (the DB CHECK list is a
-// superset of the validated COMMAND_TYPES) without producing NaN.
 function seedDispatched(): Record<string, number> {
   const out: Record<string, number> = {};
   for (const type of COMMAND_TYPES) out[type] = 0;

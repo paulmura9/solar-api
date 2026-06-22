@@ -24,10 +24,6 @@ export async function postCommand(req: Request, res: Response): Promise<void> {
     device_id?: string;
   };
 
-  // Ownership gate on top of requireAuth: only a user linked to the target
-  // device in user_devices may command it. Target resolution mirrors
-  // createAndDispatchCommand exactly. The 403 body is identical whether or
-  // not the device exists, so device ids cannot be enumerated.
   const targetDeviceId = device_id ?? env.DEFAULT_DEVICE_ID;
   const userId = req.user?.id;
   if (!userId || !(await isUserLinkedToDevice(userId, targetDeviceId))) {

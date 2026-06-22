@@ -1,12 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { Request, Response } from 'express';
 
-// Mock the Supabase client so isUserLinkedToDevice() exercises the real query
-// chain without touching a database:
-//   supabase.from('user_devices')
-//     .select('user_id').eq('user_id', X).eq('device_id', Y)
-//     .limit(1).maybeSingle()
-// Each link returns the next; maybeSingle() resolves the configured result.
 const supa = vi.hoisted(() => {
   const maybeSingle = vi.fn();
   const limit = vi.fn(() => ({ maybeSingle }));
@@ -100,7 +94,6 @@ describe('postCommand ownership gate', () => {
 
     await postCommand(commandReq(USER_ID), res);
 
-    // No device_id in the body: the gate checks the same default the service uses.
     expect(supa.eqDevice).toHaveBeenCalledWith('device_id', 'esp32-solar-01');
     expect(createAndDispatchCommand).toHaveBeenCalledWith(
       'MOVE_PANEL',

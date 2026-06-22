@@ -6,10 +6,6 @@ import { visionResultPayloadSchema } from '../schemas';
 import { parseOr } from '../utils';
 import { EVENT_TYPES } from '../../utils/constants';
 
-// The owning device is not taken from the WS connection (that identity is the
-// Pi gateway, not the panel) nor from the payload (the Pi does not send one).
-// The DB column default assigns the panel device id at insert; we read it back
-// from the inserted row for event attribution and recipient resolution.
 export async function handleVisionResult(payload: unknown): Promise<void> {
   const parsed = parseOr(visionResultPayloadSchema, payload, 'vision_result');
   if (!parsed.ok) return;
@@ -27,7 +23,6 @@ export async function handleVisionResult(payload: unknown): Promise<void> {
     });
   }
 
-  // Email only on the edge into "needs cleaning", never every cycle.
   const previous = await getPreviousVisionResult(inserted.id);
   if (isCleaningTransition(inserted, previous)) {
     await sendCleaningAlert(inserted, inserted.deviceId);

@@ -10,7 +10,6 @@ const router = Router();
 router.use(requireAuth);
 
 router.get('/', withCacheHeaders(cachePolicy.devices), asyncHandler(getDevices));
-// unused — removal candidate
 router.get('/:device_name/last-seen', asyncHandler(getDeviceLastSeen));
 
 export default router;

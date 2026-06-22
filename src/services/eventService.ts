@@ -7,8 +7,6 @@ export async function insertEvent(input: InsertEventInput): Promise<void> {
     event_type: input.event_type,
     severity: input.severity,
     message: input.message,
-    // NULL == system-level event (no owning device). The column is nullable
-    // with no default, so an omitted/undefined device_id persists as NULL.
     device_id: input.device_id ?? null,
   });
 
