@@ -92,6 +92,7 @@ export const commandAckPayloadSchema = z
 
 export const esp32EventPayloadSchema = z
   .object({
+    device_id: optionalDeviceId,
     event_type: z.string().min(1).max(64),
     severity: z.enum(SEVERITIES),
     message: z.string().min(1).max(1000),
