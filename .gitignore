@@ -6,9 +6,3 @@ dist/
 .env.production
 *.log
 .env.example
-.claude/
-CLAUDE.md
-SKILL.md
-AUDIT_BATTERY.md
-BACKEND_SECURITY_AUDIT.md
-AUDIT_*.md
